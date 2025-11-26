@@ -9,6 +9,14 @@ export interface EconomicEvent {
   date: string
 }
 
+export interface PricePoint {
+  date: string
+  close: number
+  ma20: number | null
+  ma60: number | null
+  ma200: number | null
+}
+
 export interface EvaluateResponse {
   current_price: number
   market_value: number
@@ -36,4 +44,5 @@ export interface EvaluateResponse {
     R_max: number
     effective_event: EconomicEvent | null
   }
+  price_series: PricePoint[]
 }

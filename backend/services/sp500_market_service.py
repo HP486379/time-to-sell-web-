@@ -34,6 +34,16 @@ class SP500MarketService:
         except Exception:
             return self._fallback_history()
 
+    def get_usd_jpy(self) -> float:
+        try:
+            fx = yf.download("JPY=X", period="5d", interval="1d")
+            fx = fx.dropna()
+            if not fx.empty:
+                return round(float(fx["Close"].iloc[-1]), 4)
+        except Exception:
+            pass
+        return 150.0
+
     def get_current_price(self, history: Optional[List[Tuple[str, float]]] = None) -> float:
         try:
             ticker = yf.Ticker(self.symbol)
@@ -49,3 +59,37 @@ class SP500MarketService:
         if history:
             return history[-1][1]
         return self._fallback_history()[-1][1]
+
+    def build_price_series_with_ma(self, history: List[Tuple[str, float]]):
+        closes = [p[1] for p in history]
+        dates = [p[0] for p in history]
+
+        def moving_avg(window: int) -> List[Optional[float]]:
+            results: List[Optional[float]] = []
+            running_sum = 0.0
+            for i, price in enumerate(closes):
+                running_sum += price
+                if i >= window:
+                    running_sum -= closes[i - window]
+                if i + 1 >= window:
+                    results.append(round(running_sum / window, 2))
+                else:
+                    results.append(None)
+            return results
+
+        ma20 = moving_avg(20)
+        ma60 = moving_avg(60)
+        ma200 = moving_avg(200)
+
+        series = []
+        for idx, date_str in enumerate(dates):
+            series.append(
+                {
+                    "date": date_str,
+                    "close": closes[idx],
+                    "ma20": ma20[idx],
+                    "ma60": ma60[idx],
+                    "ma200": ma200[idx],
+                }
+            )
+        return series

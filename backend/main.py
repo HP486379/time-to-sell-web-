@@ -1,4 +1,5 @@
 from datetime import date
+from typing import List, Optional
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,14 @@ class PositionRequest(BaseModel):
     avg_cost: float = Field(..., description="Average acquisition price")
 
 
+class PricePoint(BaseModel):
+    date: str
+    close: float
+    ma20: Optional[float]
+    ma60: Optional[float]
+    ma200: Optional[float]
+
+
 class EvaluateResponse(BaseModel):
     current_price: float
     market_value: float
@@ -24,6 +33,7 @@ class EvaluateResponse(BaseModel):
     technical_details: dict
     macro_details: dict
     event_details: dict
+    price_series: List[PricePoint]
 
 
 app = FastAPI(title="S&P500 Timing API")
@@ -42,7 +52,9 @@ def health():
 @app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
 def evaluate(position: PositionRequest):
     price_history = market_service.get_price_history()
-    current_price = market_service.get_current_price(price_history)
+    current_price_usd = market_service.get_current_price(price_history)
+    usd_jpy = market_service.get_usd_jpy()
+    current_price = round(current_price_usd * usd_jpy, 2)
 
     technical_score, technical_details = calculate_technical_score(price_history)
     macro_data = macro_service.get_macro_series()
@@ -80,6 +92,7 @@ def evaluate(position: PositionRequest):
             "R_max": event_details.get("R_max"),
             "effective_event": effective_event,
         },
+        "price_series": market_service.build_price_series_with_ma(price_history),
     }
 
 

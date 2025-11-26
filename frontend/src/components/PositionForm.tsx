@@ -10,7 +10,13 @@ interface Props {
 
 function PositionForm({ onSubmit, marketValue, pnl }: Props) {
   const [quantity, setQuantity] = useState('10')
-  const [avgCost, setAvgCost] = useState('4200')
+  const [avgCost, setAvgCost] = useState('65000')
+
+  const jpyFormatter = new Intl.NumberFormat('ja-JP', {
+    style: 'currency',
+    currency: 'JPY',
+    maximumFractionDigits: 0,
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +36,7 @@ function PositionForm({ onSubmit, marketValue, pnl }: Props) {
             InputProps={{ inputProps: { min: 0, step: 0.1 } }}
           />
           <TextField
-            label="平均取得単価"
+            label="平均取得単価（円）"
             type="number"
             value={avgCost}
             onChange={(e) => setAvgCost(e.target.value)}
@@ -41,8 +47,13 @@ function PositionForm({ onSubmit, marketValue, pnl }: Props) {
           </Button>
           <Divider />
           <Box display="flex" gap={2}>
-            <Metric label="評価額" value={marketValue} prefix="$" />
-            <Metric label="含み損益" value={pnl} prefix="$" color={pnl && pnl >= 0 ? 'primary' : 'error'} />
+            <Metric label="評価額" value={marketValue} formatter={jpyFormatter} />
+            <Metric
+              label="含み損益"
+              value={pnl}
+              formatter={jpyFormatter}
+              color={pnl && pnl >= 0 ? 'primary' : 'error'}
+            />
           </Box>
         </Stack>
       </CardContent>
@@ -50,8 +61,18 @@ function PositionForm({ onSubmit, marketValue, pnl }: Props) {
   )
 }
 
-function Metric({ label, value, prefix, color }: { label: string; value?: number; prefix?: string; color?: 'primary' | 'error' }) {
-  const display = value !== undefined ? `${prefix ?? ''}${value.toFixed(2)}` : '--'
+function Metric({
+  label,
+  value,
+  formatter,
+  color,
+}: {
+  label: string
+  value?: number
+  formatter?: Intl.NumberFormat
+  color?: 'primary' | 'error'
+}) {
+  const display = value !== undefined ? formatter?.format(value) ?? value.toFixed(2) : '--'
   return (
     <Box>
       <Typography variant="caption" color="text.secondary">

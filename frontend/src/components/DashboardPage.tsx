@@ -52,7 +52,7 @@ function DashboardPage() {
           <Typography variant="h6" gutterBottom>
             S&P500 価格トレンド
           </Typography>
-          <PriceChart />
+          <PriceChart priceSeries={response?.price_series ?? []} />
         </CardContent>
       </Card>
 
