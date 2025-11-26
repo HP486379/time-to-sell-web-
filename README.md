@@ -21,6 +21,10 @@
 3. 動作確認
    - ヘルスチェック: http://localhost:8000/api/health
 
+### データソース設定
+- S&P500 のシンボルを変更したい場合: `.env` に `SP500_SYMBOL=VOO` のように指定します（デフォルトは ^GSPC）。
+- FRED API を利用して 10 年国債・CPI を取得する場合: `.env` に `FRED_API_KEY=<your_key>` を設定してください。未設定の場合は安全にダミー値へフォールバックします。
+
 ※ ユニットテスト実行: `python -m pytest backend/tests/test_scoring.py`
 
 ## フロントエンドの起動

@@ -42,7 +42,7 @@ def health():
 @app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
 def evaluate(position: PositionRequest):
     price_history = market_service.get_price_history()
-    current_price = price_history[-1][1]
+    current_price = market_service.get_current_price(price_history)
 
     technical_score, technical_details = calculate_technical_score(price_history)
     macro_data = macro_service.get_macro_series()
