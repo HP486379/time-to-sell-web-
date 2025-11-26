@@ -1,32 +1,48 @@
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
+import { CssBaseline, ThemeProvider, createTheme, PaletteMode } from '@mui/material'
 import App from './App'
 
-const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: {
-      main: '#7dd3fc',
+const themeFactory = (mode: PaletteMode) =>
+  createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: mode === 'dark' ? '#7dd3fc' : '#1976d2',
+      },
+      secondary: {
+        main: mode === 'dark' ? '#a78bfa' : '#7c3aed',
+      },
+      background:
+        mode === 'dark'
+          ? {
+              default: '#0b1224',
+              paper: '#121b2f',
+            }
+          : {
+              default: '#f5f7fb',
+              paper: '#ffffff',
+            },
     },
-    secondary: {
-      main: '#a78bfa',
+    typography: {
+      fontFamily: '"Inter", "Noto Sans JP", sans-serif',
     },
-    background: {
-      default: '#0b1224',
-      paper: '#121b2f',
-    },
-  },
-  typography: {
-    fontFamily: '"Inter", "Noto Sans JP", sans-serif',
-  },
-})
+  })
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <App />
-    </ThemeProvider>
-  </React.StrictMode>,
-)
+const Root = () => {
+  const [mode, setMode] = useState<PaletteMode>('dark')
+  const theme = useMemo(() => themeFactory(mode), [mode])
+
+  const handleToggleMode = () => setMode((prev) => (prev === 'dark' ? 'light' : 'dark'))
+
+  return (
+    <React.StrictMode>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App mode={mode} onToggleMode={handleToggleMode} />
+      </ThemeProvider>
+    </React.StrictMode>
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<Root />)

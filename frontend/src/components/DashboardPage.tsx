@@ -8,6 +8,10 @@ import PriceChart from './PriceChart'
 import MacroCards from './MacroCards'
 import EventList from './EventList'
 
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE ?? '',
+})
+
 const defaultRequest: EvaluateRequest = {
   total_quantity: 10,
   avg_cost: 4200,
@@ -20,7 +24,7 @@ function DashboardPage() {
   const fetchData = async (payload: EvaluateRequest = defaultRequest) => {
     try {
       setError(null)
-      const res = await axios.post<EvaluateResponse>('/api/sp500/evaluate', payload)
+      const res = await apiClient.post<EvaluateResponse>('/api/sp500/evaluate', payload)
       setResponse(res.data)
     } catch (e: any) {
       setError(e.message)
