@@ -1,6 +1,7 @@
 from datetime import date
 from typing import List, Optional
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from scoring.technical import calculate_technical_score
@@ -52,6 +53,14 @@ class FundNavResponse(BaseModel):
 
 
 app = FastAPI(title="S&P500 Timing API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 market_service = SP500MarketService()

@@ -9,8 +9,10 @@ import MacroCards from './MacroCards'
 import EventList from './EventList'
 import { tooltips } from '../tooltipTexts'
 
+const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE ?? '',
+  baseURL: apiBase,
 })
 
 const defaultRequest: EvaluateRequest = {
