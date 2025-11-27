@@ -10,6 +10,7 @@ from scoring.total_score import calculate_total_score, get_label
 from services.sp500_market_service import SP500MarketService
 from services.macro_data_service import MacroDataService
 from services.event_service import EventService
+from services.nav_service import FundNavService
 
 
 class PositionRequest(BaseModel):
@@ -36,12 +37,27 @@ class EvaluateResponse(BaseModel):
     price_series: List[PricePoint]
 
 
+class SyntheticNavResponse(BaseModel):
+    asOf: str
+    priceUsd: float
+    usdJpy: float
+    navJpy: float
+    source: str
+
+
+class FundNavResponse(BaseModel):
+    asOf: str
+    navJpy: float
+    source: str
+
+
 app = FastAPI(title="S&P500 Timing API")
 
 
 market_service = SP500MarketService()
 macro_service = MacroDataService()
 event_service = EventService()
+nav_service = FundNavService()
 
 
 @app.get("/api/health")
@@ -49,12 +65,31 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/nav/sp500-synthetic", response_model=SyntheticNavResponse)
+def get_synthetic_nav():
+    return nav_service.get_synthetic_nav()
+
+
+@app.get("/api/nav/emaxis-slim-sp500", response_model=FundNavResponse)
+def get_fund_nav():
+    nav = nav_service.get_official_nav()
+    if nav:
+        return nav
+    synthetic = nav_service.get_synthetic_nav()
+    return {
+        "asOf": synthetic["asOf"],
+        "navJpy": synthetic["navJpy"],
+        "source": "synthetic",
+    }
+
+
 @app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
 def evaluate(position: PositionRequest):
     price_history = market_service.get_price_history()
-    current_price_usd = market_service.get_current_price(price_history)
-    usd_jpy = market_service.get_usd_jpy()
-    current_price = market_service.get_fund_nav_jpy(current_price_usd, usd_jpy)
+    market_service.get_current_price(price_history)
+    market_service.get_usd_jpy()
+    fund_nav = nav_service.get_official_nav() or nav_service.get_synthetic_nav()
+    current_price = fund_nav["navJpy"]
 
     technical_score, technical_details = calculate_technical_score(price_history)
     macro_data = macro_service.get_macro_series()

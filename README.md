@@ -24,6 +24,9 @@
 ### データソース設定
 - S&P500 のシンボルを変更したい場合: `.env` に `SP500_SYMBOL=VOO` のように指定します（デフォルトは ^GSPC）。
 - FRED API を利用して 10 年国債・CPI を取得する場合: `.env` に `FRED_API_KEY=<your_key>` を設定してください。未設定の場合は安全にダミー値へフォールバックします。
+- 基準価額（円）の取得:
+  - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
+  - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
 
 ※ ユニットテスト実行: `python -m pytest backend/tests/test_scoring.py`
 

@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Card, CardContent, TextField, Button, Stack, Typography, Box, Divider, Tooltip } from '@mui/material'
-import { EvaluateRequest } from '../types/api'
+import { EvaluateRequest, FundNavResponse, SyntheticNavResponse } from '../types/api'
 import { tooltips } from '../tooltipTexts'
 
 interface Props {
   onSubmit: (req: EvaluateRequest) => void
   marketValue?: number
   pnl?: number
+  syntheticNav?: SyntheticNavResponse | null
+  fundNav?: FundNavResponse | null
 }
 
-function PositionForm({ onSubmit, marketValue, pnl }: Props) {
+function PositionForm({ onSubmit, marketValue, pnl, syntheticNav, fundNav }: Props) {
   const [quantity, setQuantity] = useState('77384')
   const [avgCost, setAvgCost] = useState('21458')
 
@@ -31,6 +33,7 @@ function PositionForm({ onSubmit, marketValue, pnl }: Props) {
           <Tooltip title={tooltips.position.card} arrow>
             <Typography variant="h6" component="div">ポジション入力</Typography>
           </Tooltip>
+          <NavInfo syntheticNav={syntheticNav} fundNav={fundNav} />
           <Tooltip title={tooltips.position.quantity} arrow>
             <TextField
               label="保有数量"
@@ -96,6 +99,34 @@ function Metric({
         {display}
       </Typography>
     </Box>
+  )
+}
+
+function NavInfo({
+  syntheticNav,
+  fundNav,
+}: {
+  syntheticNav?: SyntheticNavResponse | null
+  fundNav?: FundNavResponse | null
+}) {
+  const formatter = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
+  const synthetic = syntheticNav ? formatter.format(syntheticNav.navJpy) : '--'
+  const official = fundNav ? formatter.format(fundNav.navJpy) : null
+  return (
+    <Stack spacing={0.5}>
+      {official && (
+        <Tooltip title={tooltips.position.navOfficial} arrow>
+          <Typography variant="body2" color="text.secondary">
+            公式基準価額（取得日: {fundNav?.asOf}）: <strong>{official}</strong>
+          </Typography>
+        </Tooltip>
+      )}
+      <Tooltip title={tooltips.position.navSynthetic} arrow>
+        <Typography variant="body2" color="text.secondary">
+          参考基準価額（{syntheticNav?.asOf ?? 'n/a'}）: <strong>{synthetic}</strong>
+        </Typography>
+      </Tooltip>
+    </Stack>
   )
 }
 

@@ -46,3 +46,17 @@ export interface EvaluateResponse {
   }
   price_series: PricePoint[]
 }
+
+export interface SyntheticNavResponse {
+  asOf: string
+  priceUsd: number
+  usdJpy: number
+  navJpy: number
+  source: string
+}
+
+export interface FundNavResponse {
+  asOf: string
+  navJpy: number
+  source: string
+}

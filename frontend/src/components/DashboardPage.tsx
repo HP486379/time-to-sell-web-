@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Grid, Card, CardContent, Typography, Stack, Alert, Tooltip } from '@mui/material'
 import axios from 'axios'
-import { EvaluateRequest, EvaluateResponse } from '../types/api'
+import { EvaluateRequest, EvaluateResponse, FundNavResponse, SyntheticNavResponse } from '../types/api'
 import ScoreSummaryCard from './ScoreSummaryCard'
 import PositionForm from './PositionForm'
 import PriceChart from './PriceChart'
@@ -21,6 +21,8 @@ const defaultRequest: EvaluateRequest = {
 function DashboardPage() {
   const [response, setResponse] = useState<EvaluateResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [syntheticNav, setSyntheticNav] = useState<SyntheticNavResponse | null>(null)
+  const [fundNav, setFundNav] = useState<FundNavResponse | null>(null)
 
   const fetchData = async (payload: EvaluateRequest = defaultRequest) => {
     try {
@@ -34,6 +36,14 @@ function DashboardPage() {
 
   useEffect(() => {
     fetchData()
+    apiClient
+      .get<SyntheticNavResponse>('/api/nav/sp500-synthetic')
+      .then((res) => setSyntheticNav(res.data))
+      .catch(() => null)
+    apiClient
+      .get<FundNavResponse>('/api/nav/emaxis-slim-sp500')
+      .then((res) => setFundNav(res.data))
+      .catch(() => null)
   }, [])
 
   return (
@@ -44,7 +54,13 @@ function DashboardPage() {
           <ScoreSummaryCard scores={response?.scores} technical={response?.technical_details} macro={response?.macro_details} />
         </Grid>
         <Grid item xs={12} md={6}>
-          <PositionForm onSubmit={fetchData} marketValue={response?.market_value} pnl={response?.unrealized_pnl} />
+          <PositionForm
+            onSubmit={fetchData}
+            marketValue={response?.market_value}
+            pnl={response?.unrealized_pnl}
+            syntheticNav={syntheticNav}
+            fundNav={fundNav}
+          />
         </Grid>
       </Grid>
 
