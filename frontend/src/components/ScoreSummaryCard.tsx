@@ -1,4 +1,5 @@
-import { Card, CardContent, Typography, LinearProgress, Stack, Box, alpha, useTheme } from '@mui/material'
+import { Card, CardContent, Typography, LinearProgress, Stack, Box, alpha, useTheme, Tooltip } from '@mui/material'
+import { tooltips } from '../tooltipTexts'
 
 interface ScoreSummaryCardProps {
   scores?: {
@@ -28,28 +29,32 @@ function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
     >
       <CardContent>
         <Stack spacing={2}>
-          <Typography variant="overline" color="text.secondary">
-            総合スコア
-          </Typography>
+          <Tooltip title={tooltips.score.total} arrow>
+            <Typography variant="overline" color="text.secondary" component="div">
+              総合スコア
+            </Typography>
+          </Tooltip>
           <Typography variant="h3" color="primary.main" fontWeight={700}>
             {scores ? scores.total.toFixed(1) : '--'}
           </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            {scores?.label ?? '計算待ち'}
-          </Typography>
+          <Tooltip title={tooltips.score.label} arrow>
+            <Typography variant="subtitle1" color="text.secondary" component="div">
+              {scores?.label ?? '計算待ち'}
+            </Typography>
+          </Tooltip>
 
           <Stack spacing={1}>
-            <LabelBar label="テクニカル" value={scores?.technical} color="primary" />
-            <LabelBar label="マクロ" value={scores?.macro} color="secondary" />
-            <LabelBar label="イベント補正" value={scores?.event_adjustment} color="error" />
+            <LabelBar label="テクニカル" tooltip={tooltips.score.technical} value={scores?.technical} color="primary" />
+            <LabelBar label="マクロ" tooltip={tooltips.score.macro} value={scores?.macro} color="secondary" />
+            <LabelBar label="イベント補正" tooltip={tooltips.score.event} value={scores?.event_adjustment} color="error" />
           </Stack>
 
           {technical && macro && (
             <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={1}>
-              <DetailItem label="乖離率 d" value={`${technical.d}%`} />
-              <DetailItem label="T_base" value={technical.T_base} />
-              <DetailItem label="T_trend" value={technical.T_trend} />
-              <DetailItem label="マクロ M" value={macro.M} />
+              <DetailItem label="乖離率 d" tooltip={tooltips.score.d} value={`${technical.d}%`} />
+              <DetailItem label="T_base" tooltip={tooltips.score.T_base} value={technical.T_base} />
+              <DetailItem label="T_trend" tooltip={tooltips.score.T_trend} value={technical.T_trend} />
+              <DetailItem label="マクロ M" tooltip={tooltips.score.macroM} value={macro.M} />
             </Box>
           )}
         </Stack>
@@ -58,13 +63,25 @@ function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
   )
 }
 
-function LabelBar({ label, value, color }: { label: string; value?: number; color: 'primary' | 'secondary' | 'error' }) {
+function LabelBar({
+  label,
+  tooltip,
+  value,
+  color,
+}: {
+  label: string
+  tooltip: string
+  value?: number
+  color: 'primary' | 'secondary' | 'error'
+}) {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" mb={0.5}>
-        <Typography variant="body2" color="text.secondary">
-          {label}
-        </Typography>
+        <Tooltip title={tooltip} arrow>
+          <Typography variant="body2" color="text.secondary" component="div">
+            {label}
+          </Typography>
+        </Tooltip>
         <Typography variant="body2" color={`${color}.light`}>
           {value !== undefined ? value.toFixed(1) : '--'}
         </Typography>
@@ -74,7 +91,7 @@ function LabelBar({ label, value, color }: { label: string; value?: number; colo
   )
 }
 
-function DetailItem({ label, value }: { label: string; value: number | string }) {
+function DetailItem({ label, tooltip, value }: { label: string; tooltip: string; value: number | string }) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   return (
@@ -87,9 +104,11 @@ function DetailItem({ label, value }: { label: string; value: number | string })
       p={1}
       borderRadius={1}
     >
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
+      <Tooltip title={tooltip} arrow>
+        <Typography variant="caption" color="text.secondary" component="div">
+          {label}
+        </Typography>
+      </Tooltip>
       <Typography variant="body1">{value}</Typography>
     </Box>
   )

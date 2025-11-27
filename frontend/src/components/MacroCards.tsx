@@ -1,4 +1,5 @@
-import { Card, CardContent, Grid, Typography, Box, Chip, useTheme, alpha } from '@mui/material'
+import { Card, CardContent, Grid, Typography, Box, Chip, useTheme, alpha, Tooltip } from '@mui/material'
+import { tooltips } from '../tooltipTexts'
 
 interface Props {
   macroDetails?: {
@@ -36,17 +37,32 @@ function MacroCards({ macroDetails }: Props) {
               }}
             >
               <CardContent>
-                <Typography variant="overline" color="text.secondary">
-                  {item.title}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  過去10年レンジに対するパーセンタイル
-                </Typography>
+                <Tooltip
+                  title={
+                    item.key === 'p_r'
+                      ? tooltips.macro.rate
+                      : item.key === 'p_cpi'
+                      ? tooltips.macro.cpi
+                      : tooltips.macro.vix
+                  }
+                  arrow
+                >
+                  <Box>
+                    <Typography variant="overline" color="text.secondary">
+                      {item.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      過去10年レンジに対するパーセンタイル
+                    </Typography>
+                  </Box>
+                </Tooltip>
                 <Typography variant="h5" color={item.color} fontWeight={700}>
                   {Math.round((percentile ?? 0) * 100)} %tile
                 </Typography>
                 <Box mt={1}>
-                  <Chip label={item.desc[labelIndex]} sx={{ color: item.color, borderColor: item.color }} variant="outlined" />
+                  <Tooltip title={tooltips.macro.chip} arrow>
+                    <Chip label={item.desc[labelIndex]} sx={{ color: item.color, borderColor: item.color }} variant="outlined" />
+                  </Tooltip>
                 </Box>
               </CardContent>
             </Card>

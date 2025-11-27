@@ -1,5 +1,6 @@
-import { Card, CardContent, Typography, List, ListItem, ListItemText, Chip, Stack } from '@mui/material'
+import { Card, CardContent, Typography, List, ListItem, ListItemText, Chip, Stack, Tooltip } from '@mui/material'
 import { EvaluateResponse } from '../types/api'
+import { tooltips } from '../tooltipTexts'
 
 interface Props {
   eventDetails?: EvaluateResponse['event_details']
@@ -18,15 +19,32 @@ function EventList({ eventDetails }: Props) {
     <Card>
       <CardContent>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">重要イベント</Typography>
-          <Chip label={`補正: ${eventDetails?.E_adj ?? 0}`} color="warning" variant="outlined" />
+          <Tooltip title={tooltips.event.title} arrow>
+            <Typography variant="h6" component="div">重要イベント</Typography>
+          </Tooltip>
+          <Tooltip title={tooltips.event.adjustment} arrow>
+            <Chip label={`補正: ${eventDetails?.E_adj ?? 0}`} color="warning" variant="outlined" />
+          </Tooltip>
         </Stack>
         <List>
           {items.map((event) => (
             <ListItem key={`${event.name}-${event.date}`} divider>
               <ListItemText
-                primary={event.name}
-                secondary={`日付: ${event.date} | 重要度: ${event.importance}`}
+                primary={
+                  <Tooltip title={tooltips.event.name} arrow>
+                    <span>{event.name}</span>
+                  </Tooltip>
+                }
+                secondary={
+                  <Stack spacing={0.5}>
+                    <Tooltip title={tooltips.event.datetime} arrow>
+                      <span>日付: {event.date}</span>
+                    </Tooltip>
+                    <Tooltip title={tooltips.event.importance} arrow>
+                      <span>重要度: {event.importance}</span>
+                    </Tooltip>
+                  </Stack>
+                }
                 primaryTypographyProps={{ color: 'text.primary' }}
               />
             </ListItem>

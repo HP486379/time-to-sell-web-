@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Grid, Card, CardContent, Typography, Stack, Alert } from '@mui/material'
+import { Grid, Card, CardContent, Typography, Stack, Alert, Tooltip } from '@mui/material'
 import axios from 'axios'
 import { EvaluateRequest, EvaluateResponse } from '../types/api'
 import ScoreSummaryCard from './ScoreSummaryCard'
@@ -7,14 +7,15 @@ import PositionForm from './PositionForm'
 import PriceChart from './PriceChart'
 import MacroCards from './MacroCards'
 import EventList from './EventList'
+import { tooltips } from '../tooltipTexts'
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE ?? '',
 })
 
 const defaultRequest: EvaluateRequest = {
-  total_quantity: 10,
-  avg_cost: 4200,
+  total_quantity: 77384,
+  avg_cost: 21458,
 }
 
 function DashboardPage() {
@@ -49,9 +50,11 @@ function DashboardPage() {
 
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
-            S&P500 価格トレンド
-          </Typography>
+          <Tooltip title={tooltips.chart.title} arrow>
+            <Typography variant="h6" gutterBottom component="div">
+              S&P500 価格トレンド
+            </Typography>
+          </Tooltip>
           <PriceChart priceSeries={response?.price_series ?? []} />
         </CardContent>
       </Card>
