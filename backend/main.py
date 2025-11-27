@@ -54,7 +54,7 @@ def evaluate(position: PositionRequest):
     price_history = market_service.get_price_history()
     current_price_usd = market_service.get_current_price(price_history)
     usd_jpy = market_service.get_usd_jpy()
-    current_price = round(current_price_usd * usd_jpy, 2)
+    current_price = market_service.get_fund_nav_jpy(current_price_usd, usd_jpy)
 
     technical_score, technical_details = calculate_technical_score(price_history)
     macro_data = macro_service.get_macro_series()

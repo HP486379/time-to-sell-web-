@@ -39,8 +39,11 @@ function MacroCards({ macroDetails }: Props) {
                 <Typography variant="overline" color="text.secondary">
                   {item.title}
                 </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  過去10年レンジに対するパーセンタイル
+                </Typography>
                 <Typography variant="h5" color={item.color} fontWeight={700}>
-                  {(percentile ?? 0).toFixed(2)} pct
+                  {Math.round((percentile ?? 0) * 100)} %tile
                 </Typography>
                 <Box mt={1}>
                   <Chip label={item.desc[labelIndex]} sx={{ color: item.color, borderColor: item.color }} variant="outlined" />

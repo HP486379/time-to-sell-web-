@@ -44,6 +44,25 @@ class SP500MarketService:
             pass
         return 150.0
 
+    def get_fund_nav_jpy(self, sp_price_usd: float, usd_jpy: float) -> float:
+        """
+        eMAXIS Slim 米国株式（S&P500）の直近基準価額を取得する。
+
+        Yahoo! Finance 上のファンドコード（デフォルト: 03311187.T）を優先し、
+        取得できない場合は S&P500 指数を為替で円換算した値でフォールバックする。
+        """
+
+        fund_symbol = os.getenv("SP500_FUND_SYMBOL", "03311187.T")
+        try:
+            fund = yf.download(fund_symbol, period="1mo", interval="1d")
+            fund = fund.dropna()
+            if not fund.empty:
+                return round(float(fund["Close"].iloc[-1]), 2)
+        except Exception:
+            pass
+
+        return round(sp_price_usd * usd_jpy, 2)
+
     def get_current_price(self, history: Optional[List[Tuple[str, float]]] = None) -> float:
         try:
             ticker = yf.Ticker(self.symbol)

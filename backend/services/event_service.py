@@ -39,10 +39,11 @@ class EventService:
 
     def get_events(self) -> List[Dict]:
         today = date.today()
-        window_days = 7
+        window_days = 30
         events = self._monthly_events(today)
-        return [
+        windowed = [
             event
             for event in events
-            if abs((event["date"] - today).days) <= window_days
+            if -7 <= (event["date"] - today).days <= window_days
         ]
+        return sorted(windowed, key=lambda e: e["date"])
