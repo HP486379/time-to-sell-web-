@@ -1,4 +1,4 @@
-import { Card, CardContent, Typography, LinearProgress, Stack, Box } from '@mui/material'
+import { Card, CardContent, Typography, LinearProgress, Stack, Box, alpha, useTheme } from '@mui/material'
 
 interface ScoreSummaryCardProps {
   scores?: {
@@ -13,8 +13,19 @@ interface ScoreSummaryCardProps {
 }
 
 function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
+  const theme = useTheme()
+  const isDark = theme.palette.mode === 'dark'
+  const gradientStart = isDark ? '#101726' : alpha(theme.palette.primary.light, 0.2)
+  const gradientEnd = isDark ? '#0c1b34' : alpha(theme.palette.secondary.light, 0.16)
+
   return (
-    <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #101726, #0c1b34)' }}>
+    <Card
+      sx={{
+        height: '100%',
+        background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
+        border: isDark ? '1px solid rgba(255,255,255,0.04)' : `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+      }}
+    >
       <CardContent>
         <Stack spacing={2}>
           <Typography variant="overline" color="text.secondary">
@@ -64,8 +75,18 @@ function LabelBar({ label, value, color }: { label: string; value?: number; colo
 }
 
 function DetailItem({ label, value }: { label: string; value: number | string }) {
+  const theme = useTheme()
+  const isDark = theme.palette.mode === 'dark'
   return (
-    <Box bgcolor="rgba(255,255,255,0.04)" p={1} borderRadius={1}>
+    <Box
+      bgcolor={
+        isDark
+          ? 'rgba(255,255,255,0.04)'
+          : alpha(theme.palette.text.primary, 0.04)
+      }
+      p={1}
+      borderRadius={1}
+    >
       <Typography variant="caption" color="text.secondary">
         {label}
       </Typography>
