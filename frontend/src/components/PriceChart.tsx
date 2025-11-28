@@ -5,9 +5,10 @@ import { tooltips } from '../tooltipTexts'
 
 type Props = {
   priceSeries: PricePoint[]
+  simple?: boolean
 }
 
-function PriceChart({ priceSeries }: Props) {
+function PriceChart({ priceSeries, simple = false }: Props) {
   if (!priceSeries.length) {
     return (
       <ResponsiveContainer width="100%" height={240}>
@@ -28,21 +29,23 @@ function PriceChart({ priceSeries }: Props) {
         />
         <YAxis tick={{ fill: '#9ca3af' }} domain={['auto', 'auto']} />
         <RechartsTooltip contentStyle={{ background: '#0b1224', border: '1px solid #334155' }} labelFormatter={(l) => `日付: ${l}`} />
-        <Legend
-          formatter={(value) => {
-            const map: Record<string, string> = {
-              終値: tooltips.chart.close,
-              MA20: tooltips.chart.ma20,
-              MA60: tooltips.chart.ma60,
-              MA200: tooltips.chart.ma200,
-            }
-            return (
-              <MuiTooltip title={map[value] ?? ''} arrow>
-                <span>{value}</span>
-              </MuiTooltip>
-            )
-          }}
-        />
+        {!simple && (
+          <Legend
+            formatter={(value) => {
+              const map: Record<string, string> = {
+                終値: tooltips.chart.close,
+                MA20: tooltips.chart.ma20,
+                MA60: tooltips.chart.ma60,
+                MA200: tooltips.chart.ma200,
+              }
+              return (
+                <MuiTooltip title={map[value] ?? ''} arrow>
+                  <span>{value}</span>
+                </MuiTooltip>
+              )
+            }}
+          />
+        )}
         <Line type="monotone" dataKey="close" stroke="#7dd3fc" strokeWidth={2} dot={false} name="終値" />
         <Line type="monotone" dataKey="ma20" stroke="#a78bfa" strokeWidth={2} dot={false} name="MA20" />
         <Line type="monotone" dataKey="ma60" stroke="#34d399" strokeWidth={2} dot={false} name="MA60" />

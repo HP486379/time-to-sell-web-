@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,6 +68,10 @@ macro_service = MacroDataService()
 event_service = EventService()
 nav_service = FundNavService()
 
+_cache_ttl = timedelta(seconds=60)
+_cached_snapshot = None
+_cached_at: Optional[datetime] = None
+
 
 @app.get("/api/health")
 def health():
@@ -92,8 +96,7 @@ def get_fund_nav():
     }
 
 
-@app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
-def evaluate(position: PositionRequest):
+def _build_snapshot():
     price_history = market_service.get_price_history()
     market_service.get_current_price(price_history)
     market_service.get_usd_jpy()
@@ -112,16 +115,10 @@ def evaluate(position: PositionRequest):
     total_score = calculate_total_score(technical_score, macro_score, event_adjustment)
     label = get_label(total_score)
 
-    market_value = position.total_quantity * current_price
-    avg_cost_total = position.total_quantity * position.avg_cost
-    unrealized_pnl = market_value - avg_cost_total
-
     effective_event = event_details.get("effective_event")
 
-    return {
+    snapshot = {
         "current_price": current_price,
-        "market_value": round(market_value, 2),
-        "unrealized_pnl": round(unrealized_pnl, 2),
         "scores": {
             "technical": technical_score,
             "macro": macro_score,
@@ -137,6 +134,40 @@ def evaluate(position: PositionRequest):
             "effective_event": effective_event,
         },
         "price_series": market_service.build_price_series_with_ma(price_history),
+    }
+
+    return snapshot
+
+
+def get_cached_snapshot():
+    global _cached_snapshot, _cached_at
+    now = datetime.utcnow()
+    if _cached_snapshot and _cached_at and now - _cached_at < _cache_ttl:
+        return _cached_snapshot
+
+    _cached_snapshot = _build_snapshot()
+    _cached_at = now
+    return _cached_snapshot
+
+
+@app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
+def evaluate(position: PositionRequest):
+    snapshot = get_cached_snapshot()
+    current_price = snapshot["current_price"]
+
+    market_value = position.total_quantity * current_price
+    avg_cost_total = position.total_quantity * position.avg_cost
+    unrealized_pnl = market_value - avg_cost_total
+
+    return {
+        "current_price": current_price,
+        "market_value": round(market_value, 2),
+        "unrealized_pnl": round(unrealized_pnl, 2),
+        "scores": snapshot["scores"],
+        "technical_details": snapshot["technical_details"],
+        "macro_details": snapshot["macro_details"],
+        "event_details": snapshot["event_details"],
+        "price_series": snapshot["price_series"],
     }
 
 
