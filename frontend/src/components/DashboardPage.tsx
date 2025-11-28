@@ -11,9 +11,19 @@ import {
   IconButton,
   Collapse,
   Chip,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material'
 import axios from 'axios'
-import { EvaluateRequest, EvaluateResponse, FundNavResponse, SyntheticNavResponse } from '../types/api'
+import dayjs from 'dayjs'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  EvaluateRequest,
+  EvaluateResponse,
+  FundNavResponse,
+  SyntheticNavResponse,
+  PricePoint,
+} from '../types/api'
 import ScoreSummaryCard from './ScoreSummaryCard'
 import PositionForm from './PositionForm'
 import PriceChart from './PriceChart'
@@ -39,6 +49,19 @@ const defaultRequest: EvaluateRequest = {
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 type DisplayMode = 'pro' | 'simple'
+type ChartRange = '1d' | '1m' | '3m' | '1y'
+
+const motionVariants = {
+  initial: { opacity: 0, y: -10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+}
+
+const chartMotion = {
+  initial: { opacity: 0.6 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0.6 },
+}
 
 function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [response, setResponse] = useState<EvaluateResponse | null>(null)
@@ -48,6 +71,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [lastRequest, setLastRequest] = useState<EvaluateRequest>(defaultRequest)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDetails, setShowDetails] = useState(false)
+  const [chartRange, setChartRange] = useState<ChartRange>('1y')
 
   const fetchData = async (payload?: EvaluateRequest) => {
     try {
@@ -91,6 +115,15 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     return lastUpdated.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
   }, [lastUpdated])
 
+  const filteredSeries = useMemo(
+    () => filterPriceSeries(response?.price_series ?? [], chartRange),
+    [response?.price_series, chartRange]
+  )
+
+  const highlights = useMemo(() => buildHighlights(response), [response])
+
+  const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
+
   return (
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
@@ -104,30 +137,36 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
       </Box>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          {displayMode === 'simple' ? (
-            <Stack spacing={2}>
-              <SimpleAlertCard
-                scores={response?.scores}
-                marketValue={response?.market_value}
-                pnl={response?.unrealized_pnl}
-                onShowDetails={() => setShowDetails((prev) => !prev)}
-                expanded={showDetails}
-              />
-              <Collapse in={showDetails}>
+          <AnimatePresence mode="wait">
+            <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
+              {displayMode === 'simple' ? (
+                <Stack spacing={2}>
+                  <SimpleAlertCard
+                    scores={response?.scores}
+                    marketValue={response?.market_value}
+                    pnl={response?.unrealized_pnl}
+                    highlights={highlights}
+                    zoneText={zoneText}
+                    onShowDetails={() => setShowDetails((prev) => !prev)}
+                    expanded={showDetails}
+                  />
+                  <Collapse in={showDetails}>
+                    <ScoreSummaryCard
+                      scores={response?.scores}
+                      technical={response?.technical_details}
+                      macro={response?.macro_details}
+                    />
+                  </Collapse>
+                </Stack>
+              ) : (
                 <ScoreSummaryCard
                   scores={response?.scores}
                   technical={response?.technical_details}
                   macro={response?.macro_details}
                 />
-              </Collapse>
-            </Stack>
-          ) : (
-            <ScoreSummaryCard
-              scores={response?.scores}
-              technical={response?.technical_details}
-              macro={response?.macro_details}
-            />
-          )}
+              )}
+            </motion.div>
+          </AnimatePresence>
         </Grid>
         <Grid item xs={12} md={6}>
           <PositionForm
@@ -147,7 +186,24 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               S&P500 価格トレンド
             </Typography>
           </Tooltip>
-          <PriceChart priceSeries={response?.price_series ?? []} simple={displayMode === 'simple'} />
+          <Box display="flex" justifyContent="flex-end" mb={1}>
+            <ToggleButtonGroup
+              value={chartRange}
+              exclusive
+              size="small"
+              onChange={(_, val) => val && setChartRange(val)}
+            >
+              <ToggleButton value="1d">1日</ToggleButton>
+              <ToggleButton value="1m">1ヶ月</ToggleButton>
+              <ToggleButton value="3m">3ヶ月</ToggleButton>
+              <ToggleButton value="1y">1年</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          <AnimatePresence mode="wait">
+            <motion.div key={`${chartRange}-${displayMode}`} variants={chartMotion} initial="initial" animate="animate" exit="exit">
+              <PriceChart priceSeries={filteredSeries} simple={displayMode === 'simple'} />
+            </motion.div>
+          </AnimatePresence>
         </CardContent>
       </Card>
 
@@ -161,6 +217,100 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
       </Grid>
     </Stack>
   )
+}
+
+function filterPriceSeries(series: PricePoint[], range: ChartRange): PricePoint[] {
+  if (!series.length) return []
+  const lastDate = dayjs(series[series.length - 1].date)
+  let fromDate = lastDate.subtract(1, 'year')
+
+  switch (range) {
+    case '1d':
+      fromDate = lastDate.subtract(1, 'day')
+      break
+    case '1m':
+      fromDate = lastDate.subtract(1, 'month')
+      break
+    case '3m':
+      fromDate = lastDate.subtract(3, 'month')
+      break
+    case '1y':
+    default:
+      fromDate = lastDate.subtract(1, 'year')
+      break
+  }
+
+  return series.filter((p) => {
+    const current = dayjs(p.date)
+    return current.isAfter(fromDate) || current.isSame(fromDate, 'day')
+  })
+}
+
+function getScoreZoneText(score?: number) {
+  if (score === undefined) return 'スコアの計算中です。'
+  if (score >= 80) return '現在のスコアは「かなり高い水準」です。'
+  if (score >= 60) return '現在のスコアは「やや高めの水準」です。'
+  if (score >= 40) return '現在のスコアは「平均的な水準」です。'
+  if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
+  return '現在のスコアは「かなり低い水準」です。'
+}
+
+function buildHighlights(response: EvaluateResponse | null): { icon: string; text: string }[] {
+  if (!response) return []
+  const highlights: { icon: string; text: string }[] = []
+  const { technical_details: technical, macro_details: macro, event_details: event, unrealized_pnl, market_value } = response
+  const formatter = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
+
+  if (technical?.d !== undefined) {
+    if (technical.d >= 15) {
+      highlights.push({ icon: '📈', text: '株価は長期平均よりかなり高い位置にあります。' })
+    } else if (technical.d >= 5) {
+      highlights.push({ icon: '📈', text: '株価は長期平均よりやや高い位置にあります。' })
+    } else if (technical.d <= -5) {
+      highlights.push({ icon: '📉', text: '株価は長期平均より低めの位置にあります。' })
+    } else {
+      highlights.push({ icon: '➖', text: '株価は長期平均に近い水準にあります。' })
+    }
+  }
+
+  if (macro?.M !== undefined) {
+    if (macro.M >= 70) {
+      highlights.push({ icon: '💹', text: '金利やインフレなどの環境は、株式にとってやや逆風です。' })
+    } else if (macro.M >= 50) {
+      highlights.push({ icon: '💹', text: 'マクロ環境はやや注意が必要な水準です。' })
+    } else {
+      highlights.push({ icon: '🌤️', text: 'マクロ環境は比較的落ち着いています。' })
+    }
+  }
+
+  if (event?.effective_event && event.E_adj !== 0) {
+    highlights.push({
+      icon: '⏰',
+      text: `今週は「${event.effective_event.name}」が予定されており、発表前後は値動きが大きくなる可能性があります。`,
+    })
+  } else {
+    highlights.push({ icon: '📆', text: '直近で特別に大きなイベントは予定されていません。' })
+  }
+
+  if (unrealized_pnl !== undefined && market_value !== undefined) {
+    const costBasis = market_value - unrealized_pnl
+    const ratio = costBasis ? (unrealized_pnl / costBasis) * 100 : 0
+    if (unrealized_pnl > 0) {
+      highlights.push({
+        icon: '💰',
+        text: `現在の含み益はおよそ ${formatter.format(unrealized_pnl)}（${ratio.toFixed(1)}%）です。`,
+      })
+    } else if (unrealized_pnl < 0) {
+      highlights.push({
+        icon: '📊',
+        text: `現在の含み損はおよそ ${formatter.format(unrealized_pnl)}（${ratio.toFixed(1)}%）です。`,
+      })
+    } else {
+      highlights.push({ icon: '⚖️', text: '現在の含み損益はほぼプラスマイナスゼロです。' })
+    }
+  }
+
+  return highlights.slice(0, 4)
 }
 
 export default DashboardPage

@@ -18,6 +18,7 @@ function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
   const isDark = theme.palette.mode === 'dark'
   const gradientStart = isDark ? '#101726' : alpha(theme.palette.primary.light, 0.2)
   const gradientEnd = isDark ? '#0c1b34' : alpha(theme.palette.secondary.light, 0.16)
+  const zoneText = getScoreZoneText(scores?.total)
 
   return (
     <Card
@@ -42,6 +43,9 @@ function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
               {scores?.label ?? '計算待ち'}
             </Typography>
           </Tooltip>
+          <Typography variant="body2" color="text.secondary">
+            {zoneText}
+          </Typography>
 
           <Stack spacing={1}>
             <LabelBar label="テクニカル" tooltip={tooltips.score.technical} value={scores?.technical} color="primary" />
@@ -61,6 +65,15 @@ function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
       </CardContent>
     </Card>
   )
+}
+
+const getScoreZoneText = (score?: number) => {
+  if (score === undefined) return 'スコアの計算中です。'
+  if (score >= 80) return '現在のスコアは「かなり高い水準」です。'
+  if (score >= 60) return '現在のスコアは「やや高めの水準」です。'
+  if (score >= 40) return '現在のスコアは「平均的な水準」です。'
+  if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
+  return '現在のスコアは「かなり低い水準」です。'
 }
 
 function LabelBar({

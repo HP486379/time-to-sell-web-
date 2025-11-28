@@ -1,4 +1,4 @@
-import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip } from '@mui/material'
+import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip, Divider } from '@mui/material'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { tooltips } from '../tooltipTexts'
 
@@ -8,6 +8,8 @@ interface Props {
   }
   marketValue?: number
   pnl?: number
+  highlights?: { icon: string; text: string }[]
+  zoneText?: string
   onShowDetails: () => void
   expanded: boolean
 }
@@ -25,8 +27,8 @@ const getAlert = (score = 0): AlertLevel => {
     return {
       level: 'strong-sell',
       title: 'かなり売り時です',
-      message: '株価が長期平均よりかなり高く、金利やインフレもやや高めの状態です。',
-      color: '#ef4444',
+      message: '株価が長期平均よりかなり高く、金利やインフレも高めの状態です。大きめの調整が入る可能性もあります。',
+      color: '#FFE5E5',
       icon: '⚠️',
     }
   }
@@ -35,7 +37,7 @@ const getAlert = (score = 0): AlertLevel => {
       level: 'sell',
       title: 'そろそろ一部売ってもよさそうです',
       message: '株価はやや高めで、今後の値動き次第では調整する可能性もあります。',
-      color: '#f97316',
+      color: '#FFEAD6',
       icon: '🟧',
     }
   }
@@ -44,7 +46,7 @@ const getAlert = (score = 0): AlertLevel => {
       level: 'hold',
       title: '今は様子見で大丈夫です',
       message: '株価と景気のバランスは平均的で、急いで動く局面ではありません。',
-      color: '#3b82f6',
+      color: '#E6F0FF',
       icon: '🟦',
     }
   }
@@ -52,12 +54,21 @@ const getAlert = (score = 0): AlertLevel => {
     level: 'buy',
     title: 'まだ売り時ではありません',
     message: '株価が割安寄りで、長期投資では保有や買い増しも検討できる状態です。',
-    color: '#22c55e',
+    color: '#E4F6E8',
     icon: '🟩',
   }
 }
 
-function SimpleAlertCard({ scores, marketValue, pnl, onShowDetails, expanded }: Props) {
+const getScoreZoneText = (score?: number) => {
+  if (score === undefined) return 'スコアの計算中です。'
+  if (score >= 80) return '現在のスコアは「かなり高い水準」です。'
+  if (score >= 60) return '現在のスコアは「やや高めの水準」です。'
+  if (score >= 40) return '現在のスコアは「平均的な水準」です。'
+  if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
+  return '現在のスコアは「かなり低い水準」です。'
+}
+
+function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded }: Props) {
   const theme = useTheme()
   const alert = getAlert(scores?.total)
   const baseColor = alert.color
@@ -72,9 +83,9 @@ function SimpleAlertCard({ scores, marketValue, pnl, onShowDetails, expanded }: 
   return (
     <Card
       sx={{
-        background: `linear-gradient(135deg, ${alpha(baseColor, 0.12)}, ${alpha(baseColor, 0.24)})`,
-        border: `1px solid ${alpha(baseColor, 0.35)}`,
-        boxShadow: `0 10px 30px ${alpha(baseColor, 0.2)}`,
+        background: baseColor,
+        border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
+        boxShadow: `0 12px 30px ${alpha(theme.palette.text.primary, 0.08)}`,
       }}
     >
       <CardContent>
@@ -92,6 +103,9 @@ function SimpleAlertCard({ scores, marketValue, pnl, onShowDetails, expanded }: 
           </Stack>
           <Typography variant="body1" color={theme.palette.text.primary}>
             {alert.message}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {zoneText ?? getScoreZoneText(scores?.total)}
           </Typography>
           {pnl !== undefined && marketValue !== undefined && (
             <Box
@@ -113,6 +127,35 @@ function SimpleAlertCard({ scores, marketValue, pnl, onShowDetails, expanded }: 
               </Typography>
             </Box>
           )}
+          {highlights.length > 0 && (
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                backgroundColor: alpha(theme.palette.background.default, 0.35),
+                border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+              }}
+            >
+              <Tooltip title={tooltips.simple.points} arrow>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  今日のポイント
+                </Typography>
+              </Tooltip>
+              <Stack spacing={1}>
+                {highlights.map((h, idx) => (
+                  <Stack direction="row" spacing={1} alignItems="flex-start" key={`${h.icon}-${idx}`}>
+                    <Typography variant="body1" component="span" aria-hidden>
+                      {h.icon}
+                    </Typography>
+                    <Typography variant="body2" component="span" color="text.primary">
+                      {h.text}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+          )}
+          <Divider light />
           <Button
             variant="outlined"
             color="inherit"
