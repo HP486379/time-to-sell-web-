@@ -1,4 +1,5 @@
 import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip, Divider } from '@mui/material'
+import { keyframes } from '@mui/system'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { tooltips } from '../tooltipTexts'
 
@@ -20,6 +21,8 @@ interface AlertLevel {
   message: string
   color: string
   icon: string
+  face: string
+  reaction: string
 }
 
 const getAlert = (score = 0): AlertLevel => {
@@ -30,6 +33,8 @@ const getAlert = (score = 0): AlertLevel => {
       message: '株価が長期平均よりかなり高く、金利やインフレも高めの状態です。大きめの調整が入る可能性もあります。',
       color: '#FFE5E5',
       icon: '⚠️',
+      face: '(；ﾟДﾟ)',
+      reaction: '今売らんで、いつ売るんですかレベルです…！',
     }
   }
   if (score >= 60) {
@@ -39,6 +44,8 @@ const getAlert = (score = 0): AlertLevel => {
       message: '株価はやや高めで、今後の値動き次第では調整する可能性もあります。',
       color: '#FFEAD6',
       icon: '🟧',
+      face: '😅',
+      reaction: 'ちょっとホクホクしてきました。一部だけポケットに入れてもいいかも。',
     }
   }
   if (score >= 40) {
@@ -48,6 +55,8 @@ const getAlert = (score = 0): AlertLevel => {
       message: '株価と景気のバランスは平均的で、急いで動く局面ではありません。',
       color: '#E6F0FF',
       icon: '🟦',
+      face: '( ˘ω˘ )',
+      reaction: '今は静観タイム。お茶でも飲みながら見守りましょう。',
     }
   }
   return {
@@ -56,6 +65,8 @@ const getAlert = (score = 0): AlertLevel => {
     message: '株価が割安寄りで、長期投資では保有や買い増しも検討できる状態です。',
     color: '#E4F6E8',
     icon: '🟩',
+    face: '😎',
+    reaction: '“バーゲンコーナー”の前を通りかかったぐらいの感じです。',
   }
 }
 
@@ -80,6 +91,27 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
     maximumFractionDigits: 0,
   })
 
+  const shake = keyframes`
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-2px); }
+    40% { transform: translateX(2px); }
+    60% { transform: translateX(-1px); }
+    80% { transform: translateX(1px); }
+    100% { transform: translateX(0); }
+  `
+
+  const bounce = keyframes`
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  `
+
+  const faceAnimation =
+    alert.level === 'strong-sell'
+      ? `${shake} 0.8s ease-in-out 0s 3`
+      : alert.level === 'buy'
+        ? `${bounce} 1.2s ease-in-out 0s 3`
+        : undefined
+
   return (
     <Card
       sx={{
@@ -95,11 +127,30 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
               シンプル・アラート
             </Typography>
           </Tooltip>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="h3">{alert.icon}</Typography>
-            <Typography variant="h5" fontWeight={700} color={baseColor}>
-              {alert.title}
-            </Typography>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box
+              aria-hidden
+              sx={{
+                fontSize: { xs: 32, sm: 40 },
+                lineHeight: 1,
+                animation: faceAnimation,
+              }}
+            >
+              {alert.face}
+            </Box>
+            <Stack spacing={0.5}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography variant="h3" component="span">
+                  {alert.icon}
+                </Typography>
+                <Typography variant="h6" fontWeight={700} color={theme.palette.text.primary}>
+                  {alert.title}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                {alert.reaction}
+              </Typography>
+            </Stack>
           </Stack>
           <Typography variant="body1" color={theme.palette.text.primary}>
             {alert.message}
