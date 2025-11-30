@@ -37,6 +37,7 @@ import EventList from './EventList'
 import { tooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
+import BacktestSummaryCard from './BacktestSummaryCard'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -141,8 +142,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </IconButton>
         </Tooltip>
       </Box>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
+      <Grid container spacing={3} alignItems="stretch">
+        <Grid item xs={12} md={8}>
           <AnimatePresence mode="wait">
             <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
               {displayMode === 'simple' ? (
@@ -173,6 +174,9 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               )}
             </motion.div>
           </AnimatePresence>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <BacktestSummaryCard />
         </Grid>
       </Grid>
 
