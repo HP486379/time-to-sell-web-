@@ -2,6 +2,7 @@ import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Too
 import { keyframes } from '@mui/system'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { tooltips } from '../tooltipTexts'
+import { UridokiKunAvatar, type SimpleAlertLevel } from './UridokiKunAvatar'
 
 interface Props {
   scores?: {
@@ -16,7 +17,7 @@ interface Props {
 }
 
 interface AlertLevel {
-  level: 'strong-sell' | 'sell' | 'hold' | 'buy'
+  level: SimpleAlertLevel
   title: string
   message: string
   color: string
@@ -131,12 +132,14 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
             <Box
               aria-hidden
               sx={{
-                fontSize: { xs: 32, sm: 40 },
-                lineHeight: 1,
                 animation: faceAnimation,
               }}
             >
-              {alert.face}
+              <UridokiKunAvatar
+                level={alert.level}
+                animated={!!faceAnimation}
+                label={`${alert.title}のビジュアル表示`}
+              />
             </Box>
             <Stack spacing={0.5}>
               <Stack direction="row" alignItems="center" spacing={1}>
