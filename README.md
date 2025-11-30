@@ -27,8 +27,11 @@
 - 基準価額（円）の取得:
   - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
   - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
+- シンプルバックテスト（閾値売買）:
+  - `POST /api/backtest` に `{ "start_date": "2004-01-01", "end_date": "2024-12-31", "initial_cash": 1000000, "buy_threshold": 40, "sell_threshold": 80 }` のように渡すと、
+    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します。
 
-※ ユニットテスト実行: `python -m pytest backend/tests/test_scoring.py`
+※ ユニットテスト実行: `python -m pytest backend/tests`
 
 ### 計算ロジックの入力/出力メモ
 - ポジション計算は「円建て S&P500 連動投信」を前提にしており、平均取得単価と評価額・損益は円で返却します（為替は yfinance の USD/JPY 終値を使用）。

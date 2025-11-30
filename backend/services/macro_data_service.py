@@ -1,7 +1,7 @@
 import os
 import random
 from datetime import date, timedelta
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import requests
 import yfinance as yf
@@ -20,7 +20,7 @@ class MacroDataService:
         current = base + variance * 0.5
         return history, current
 
-    def _fetch_fred_series(self, series_id: str, start: date) -> List[float]:
+    def _fetch_fred_series(self, series_id: str, start: date, end: Optional[date] = None) -> List[float]:
         if not self.fred_api_key:
             return []
 
@@ -30,6 +30,8 @@ class MacroDataService:
             "file_type": "json",
             "observation_start": start.isoformat(),
         }
+        if end:
+            params["observation_end"] = end.isoformat()
         try:
             resp = requests.get(
                 "https://api.stlouisfed.org/fred/series/observations", params=params, timeout=10
@@ -43,6 +45,35 @@ class MacroDataService:
                 except (TypeError, ValueError):
                     continue
             return values
+        except Exception:
+            return []
+
+    def _fetch_fred_series_with_dates(
+        self, series_id: str, start: date, end: date
+    ) -> List[Tuple[date, float]]:
+        if not self.fred_api_key:
+            return []
+        params = {
+            "series_id": series_id,
+            "api_key": self.fred_api_key,
+            "file_type": "json",
+            "observation_start": start.isoformat(),
+            "observation_end": end.isoformat(),
+        }
+        try:
+            resp = requests.get(
+                "https://api.stlouisfed.org/fred/series/observations", params=params, timeout=10
+            )
+            resp.raise_for_status()
+            observations = resp.json().get("observations", [])
+            series: List[Tuple[date, float]] = []
+            for obs in observations:
+                try:
+                    obs_date = date.fromisoformat(obs["date"])
+                    series.append((obs_date, float(obs["value"])))
+                except Exception:
+                    continue
+            return series
         except Exception:
             return []
 
@@ -72,6 +103,60 @@ class MacroDataService:
         if values:
             return values[:-1], values[-1]
         return self._synthetic_series(4.0, 1.2)
+
+    def _synthetic_series_with_dates(
+        self, start: date, end: date, base: float, variance: float
+    ) -> List[Tuple[date, float]]:
+        days = (end - start).days
+        if days <= 0:
+            days = 30
+        series: List[Tuple[date, float]] = []
+        value = base
+        for i in range(days + 1):
+            value += random.uniform(-variance, variance)
+            series.append((start + timedelta(days=i), round(value, 3)))
+        return series
+
+    def _fetch_vix_range(self, start: date, end: date) -> List[Tuple[date, float]]:
+        try:
+            data = yf.download("^VIX", start=start, end=end + timedelta(days=1), interval="1d")
+            data = data.dropna()
+            if data.empty:
+                raise ValueError("empty vix range")
+            return [(idx.date(), round(float(val), 3)) for idx, val in data["Close"].items()]
+        except Exception:
+            return self._synthetic_series_with_dates(start, end, 18.0, 5.0)
+
+    def _fetch_r10y_range(self, start: date, end: date) -> List[Tuple[date, float]]:
+        values = []
+        if self.fred_api_key:
+            values = self._fetch_fred_series_with_dates("DGS10", start, end)
+        if not values:
+            try:
+                data = yf.download("^TNX", start=start, end=end + timedelta(days=1), interval="1d")
+                data = data.dropna()
+                if not data.empty:
+                    values = [(idx.date(), round(float(val) / 10, 3)) for idx, val in data["Close"].items()]
+            except Exception:
+                pass
+        if not values:
+            values = self._synthetic_series_with_dates(start, end, 3.5, 1.0)
+        return values
+
+    def _fetch_cpi_range(self, start: date, end: date) -> List[Tuple[date, float]]:
+        values: List[Tuple[date, float]] = []
+        if self.fred_api_key:
+            values = self._fetch_fred_series_with_dates("CPIAUCSL", start, end)
+        if not values:
+            values = self._synthetic_series_with_dates(start, end, 4.0, 1.2)
+        return values
+
+    def get_macro_series_range(self, start: date, end: date) -> Dict[str, List[Tuple[date, float]]]:
+        return {
+            "r_10y": self._fetch_r10y_range(start, end),
+            "cpi": self._fetch_cpi_range(start, end),
+            "vix": self._fetch_vix_range(start, end),
+        }
 
     def get_macro_series(self) -> Dict[str, Tuple[List[float], float]]:
         return {

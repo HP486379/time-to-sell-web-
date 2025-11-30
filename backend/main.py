@@ -12,6 +12,7 @@ from services.sp500_market_service import SP500MarketService
 from services.macro_data_service import MacroDataService
 from services.event_service import EventService
 from services.nav_service import FundNavService
+from services.backtest_service import BacktestService
 
 
 class PositionRequest(BaseModel):
@@ -52,6 +53,38 @@ class FundNavResponse(BaseModel):
     source: str
 
 
+class BacktestRequest(BaseModel):
+    start_date: date
+    end_date: date
+    initial_cash: float
+    buy_threshold: float = 40.0
+    sell_threshold: float = 80.0
+
+
+class Trade(BaseModel):
+    action: str
+    date: str
+    quantity: int
+    price: float
+
+
+class PortfolioPoint(BaseModel):
+    date: str
+    value: float
+
+
+class BacktestResponse(BaseModel):
+    final_value: float
+    buy_and_hold_final: float
+    total_return_pct: float
+    cagr_pct: float
+    max_drawdown_pct: float
+    trade_count: int
+    trades: List[Trade]
+    portfolio_history: List[PortfolioPoint]
+    buy_hold_history: List[PortfolioPoint]
+
+
 app = FastAPI(title="S&P500 Timing API")
 
 app.add_middleware(
@@ -67,6 +100,7 @@ market_service = SP500MarketService()
 macro_service = MacroDataService()
 event_service = EventService()
 nav_service = FundNavService()
+backtest_service = BacktestService(market_service, macro_service, event_service)
 
 _cache_ttl = timedelta(seconds=60)
 _cached_snapshot = None
@@ -169,6 +203,18 @@ def evaluate(position: PositionRequest):
         "event_details": snapshot["event_details"],
         "price_series": snapshot["price_series"],
     }
+
+
+@app.post("/api/backtest", response_model=BacktestResponse)
+def backtest(payload: BacktestRequest):
+    result = backtest_service.run_backtest(
+        payload.start_date,
+        payload.end_date,
+        payload.initial_cash,
+        payload.buy_threshold,
+        payload.sell_threshold,
+    )
+    return result
 
 
 if __name__ == "__main__":

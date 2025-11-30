@@ -12,13 +12,13 @@ class SP500MarketService:
         self.symbol = symbol or os.getenv("SP500_SYMBOL", "^GSPC")
         self.start_price = 4000.0
 
-    def _fallback_history(self) -> List[Tuple[str, float]]:
+    def _fallback_history(self, days: int = 260) -> List[Tuple[str, float]]:
         today = date.today()
         history = []
         price = self.start_price
-        for i in range(260):
+        for i in range(days):
             price += 1.5
-            history.append(((today - timedelta(days=260 - i)).isoformat(), round(price, 2)))
+            history.append(((today - timedelta(days=days - i)).isoformat(), round(price, 2)))
         return history
 
     def get_price_history(self) -> List[Tuple[str, float]]:
@@ -33,6 +33,20 @@ class SP500MarketService:
             ]
         except Exception:
             return self._fallback_history()
+
+    def get_price_history_range(self, start: date, end: date) -> List[Tuple[str, float]]:
+        try:
+            hist = yf.download(self.symbol, start=start, end=end + timedelta(days=1), interval="1d")
+            hist = hist.dropna()
+            if hist.empty:
+                raise ValueError("empty history")
+            closes = hist["Close"]
+            return [
+                (idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()
+            ]
+        except Exception:
+            days = (end - start).days or 260
+            return self._fallback_history(days)
 
     def get_usd_jpy(self) -> float:
         try:
