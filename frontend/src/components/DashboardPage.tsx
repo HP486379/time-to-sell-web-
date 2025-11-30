@@ -13,6 +13,11 @@ import {
   Chip,
   ToggleButtonGroup,
   ToggleButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -72,6 +77,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [chartRange, setChartRange] = useState<ChartRange>('1y')
+  const [positionDialogOpen, setPositionDialogOpen] = useState(false)
 
   const fetchData = async (payload?: EvaluateRequest) => {
     try {
@@ -136,7 +142,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         </Tooltip>
       </Box>
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <AnimatePresence mode="wait">
             <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
               {displayMode === 'simple' ? (
@@ -167,15 +173,6 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               )}
             </motion.div>
           </AnimatePresence>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <PositionForm
-            onSubmit={fetchData}
-            marketValue={response?.market_value}
-            pnl={response?.unrealized_pnl}
-            syntheticNav={syntheticNav}
-            fundNav={fundNav}
-          />
         </Grid>
       </Grid>
 
@@ -215,6 +212,33 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           <EventList eventDetails={response?.event_details} />
         </Grid>
       </Grid>
+
+      <Box position="fixed" bottom={24} right={24} zIndex={(theme) => theme.zIndex.tooltip}>
+        <Tooltip title="あなたのポジションで試算（任意）" arrow>
+          <Button variant="contained" color="secondary" onClick={() => setPositionDialogOpen(true)}>
+            マイポジ試算（任意）
+          </Button>
+        </Tooltip>
+      </Box>
+
+      <Dialog open={positionDialogOpen} onClose={() => setPositionDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>マイポジ試算</DialogTitle>
+        <DialogContent dividers>
+          <PositionForm
+            onSubmit={(req) => {
+              fetchData(req)
+              setPositionDialogOpen(false)
+            }}
+            marketValue={response?.market_value}
+            pnl={response?.unrealized_pnl}
+            syntheticNav={syntheticNav}
+            fundNav={fundNav}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPositionDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }
