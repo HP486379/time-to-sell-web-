@@ -1,4 +1,5 @@
 import React from 'react'
+import defaultSprite from '../assets/uridoki-kun-sprite.png'
 
 export type SimpleAlertLevel = 'strong-sell' | 'sell' | 'hold' | 'buy'
 
@@ -32,7 +33,7 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   spriteUrl,
 }) => {
   const ariaLabel = label ?? levelLabels[level]
-  const resolvedUrl = spriteUrl ?? '/assets/uridoki-kun-sprite.png'
+  const resolvedUrl = spriteUrl ?? defaultSprite
   return (
     <div
       className={`uridoki-kun-avatar uridoki-kun-${level}`}
