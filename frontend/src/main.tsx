@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { CssBaseline, ThemeProvider, createTheme, PaletteMode } from '@mui/material'
+import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 
 const themeFactory = (mode: PaletteMode) =>
@@ -39,7 +40,9 @@ const Root = () => {
     <React.StrictMode>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <App mode={mode} onToggleMode={handleToggleMode} />
+        <BrowserRouter>
+          <App mode={mode} onToggleMode={handleToggleMode} />
+        </BrowserRouter>
       </ThemeProvider>
     </React.StrictMode>
   )

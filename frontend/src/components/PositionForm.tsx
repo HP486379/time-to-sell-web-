@@ -4,7 +4,7 @@ import { EvaluateRequest, FundNavResponse, SyntheticNavResponse } from '../types
 import { tooltips } from '../tooltipTexts'
 
 interface Props {
-  onSubmit: (req: EvaluateRequest) => void
+  onSubmit: (req: Pick<EvaluateRequest, 'total_quantity' | 'avg_cost'>) => void
   marketValue?: number
   pnl?: number
   syntheticNav?: SyntheticNavResponse | null

@@ -38,6 +38,7 @@ import { tooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import BacktestSummaryCard from './BacktestSummaryCard'
+import { Link as RouterLink } from 'react-router-dom'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -50,6 +51,7 @@ const apiClient = axios.create({
 const defaultRequest: EvaluateRequest = {
   total_quantity: 77384,
   avg_cost: 21458,
+  index_type: 'SP500',
 }
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
@@ -75,25 +77,31 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [syntheticNav, setSyntheticNav] = useState<SyntheticNavResponse | null>(null)
   const [fundNav, setFundNav] = useState<FundNavResponse | null>(null)
   const [lastRequest, setLastRequest] = useState<EvaluateRequest>(defaultRequest)
+  const [indexType, setIndexType] = useState<'SP500' | 'TOPIX'>('SP500')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [chartRange, setChartRange] = useState<ChartRange>('1y')
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
 
-  const fetchData = async (payload?: EvaluateRequest) => {
+  const fetchData = async (payload?: Partial<EvaluateRequest>) => {
     try {
       setError(null)
-      const body = payload ?? lastRequest
+      const body = { ...lastRequest, ...(payload ?? {}), index_type: indexType }
       const res = await apiClient.post<EvaluateResponse>('/api/sp500/evaluate', body)
       setResponse(res.data)
       setLastUpdated(new Date())
-      if (payload) setLastRequest(payload)
+      if (payload) setLastRequest((prev) => ({ ...prev, ...payload, index_type: indexType }))
     } catch (e: any) {
       setError(e.message)
     }
   }
 
   const fetchNavs = async () => {
+    if (indexType !== 'SP500') {
+      setSyntheticNav(null)
+      setFundNav(null)
+      return
+    }
     try {
       const [syntheticRes, fundRes] = await Promise.all([
         apiClient.get<SyntheticNavResponse>('/api/nav/sp500-synthetic').catch(() => null),
@@ -115,7 +123,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     fetchAll()
     const id = setInterval(fetchAll, REFRESH_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [lastRequest])
+  }, [lastRequest, indexType])
 
   const lastUpdatedLabel = useMemo(() => {
     if (!lastUpdated) return '未更新'
@@ -134,13 +142,29 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   return (
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
-      <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
-        <Chip label={`最終更新: ${lastUpdatedLabel}`} size="small" />
-        <Tooltip title="最新データを取得" arrow>
-          <IconButton color="primary" onClick={() => fetchAll()}>
-            <RefreshIcon />
-          </IconButton>
-        </Tooltip>
+      <Box display="flex" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap">
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            対象インデックス
+          </Typography>
+          <ToggleButtonGroup
+            value={indexType}
+            exclusive
+            size="small"
+            onChange={(_, val) => val && setIndexType(val)}
+          >
+            <ToggleButton value="SP500">S&P500</ToggleButton>
+            <ToggleButton value="TOPIX">TOPIX</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Chip label={`最終更新: ${lastUpdatedLabel}`} size="small" />
+          <Tooltip title="最新データを取得" arrow>
+            <IconButton color="primary" onClick={() => fetchAll()}>
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
       <Grid container spacing={3} alignItems="stretch">
         <Grid item xs={12} md={8}>
@@ -176,7 +200,12 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </AnimatePresence>
         </Grid>
         <Grid item xs={12} md={4}>
-          <BacktestSummaryCard />
+          <Stack spacing={2}>
+            <BacktestSummaryCard indexType={indexType} />
+            <Button component={RouterLink} to="/backtest" variant="outlined" color="secondary">
+              詳細バックテストを開く
+            </Button>
+          </Stack>
         </Grid>
       </Grid>
 

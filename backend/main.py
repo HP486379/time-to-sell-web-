@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 import logging
+from enum import Enum
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -16,9 +17,15 @@ from services.nav_service import FundNavService
 from services.backtest_service import BacktestService
 
 
+class IndexType(str, Enum):
+    SP500 = "SP500"
+    TOPIX = "TOPIX"
+
+
 class PositionRequest(BaseModel):
     total_quantity: float = Field(..., description="Total units held")
     avg_cost: float = Field(..., description="Average acquisition price")
+    index_type: IndexType = Field(IndexType.SP500, description="Target index type")
 
 
 class PricePoint(BaseModel):
@@ -60,6 +67,7 @@ class BacktestRequest(BaseModel):
     initial_cash: float
     buy_threshold: float = 40.0
     sell_threshold: float = 80.0
+    index_type: IndexType = IndexType.SP500
 
 
 class Trade(BaseModel):
@@ -106,8 +114,8 @@ nav_service = FundNavService()
 backtest_service = BacktestService(market_service, macro_service, event_service)
 
 _cache_ttl = timedelta(seconds=60)
-_cached_snapshot = None
-_cached_at: Optional[datetime] = None
+_cached_snapshot = {}
+_cached_at: dict[str, datetime] = {}
 
 
 @app.get("/api/health")
@@ -133,12 +141,15 @@ def get_fund_nav():
     }
 
 
-def _build_snapshot():
-    price_history = market_service.get_price_history()
-    market_service.get_current_price(price_history)
+def _build_snapshot(index_type: IndexType = IndexType.SP500):
+    price_history = market_service.get_price_history(index_type=index_type.value)
+    market_service.get_current_price(price_history, index_type=index_type.value)
     market_service.get_usd_jpy()
-    fund_nav = nav_service.get_official_nav() or nav_service.get_synthetic_nav()
-    current_price = fund_nav["navJpy"]
+    if index_type == IndexType.SP500:
+        fund_nav = nav_service.get_official_nav() or nav_service.get_synthetic_nav()
+        current_price = fund_nav["navJpy"]
+    else:
+        current_price = price_history[-1][1]
 
     technical_score, technical_details = calculate_technical_score(price_history)
     macro_data = macro_service.get_macro_series()
@@ -176,20 +187,21 @@ def _build_snapshot():
     return snapshot
 
 
-def get_cached_snapshot():
+def get_cached_snapshot(index_type: IndexType = IndexType.SP500):
     global _cached_snapshot, _cached_at
     now = datetime.utcnow()
-    if _cached_snapshot and _cached_at and now - _cached_at < _cache_ttl:
-        return _cached_snapshot
+    cache_key = index_type.value
+    if cache_key in _cached_snapshot and cache_key in _cached_at and now - _cached_at[cache_key] < _cache_ttl:
+        return _cached_snapshot[cache_key]
 
-    _cached_snapshot = _build_snapshot()
-    _cached_at = now
-    return _cached_snapshot
+    _cached_snapshot[cache_key] = _build_snapshot(index_type=index_type)
+    _cached_at[cache_key] = now
+    return _cached_snapshot[cache_key]
 
 
 @app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
 def evaluate(position: PositionRequest):
-    snapshot = get_cached_snapshot()
+    snapshot = get_cached_snapshot(index_type=position.index_type)
     current_price = snapshot["current_price"]
 
     market_value = position.total_quantity * current_price
@@ -217,6 +229,7 @@ def backtest(payload: BacktestRequest):
             payload.initial_cash,
             payload.buy_threshold,
             payload.sell_threshold,
+            payload.index_type.value,
         )
         return result
     except ValueError as exc:

@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 import os
 import sys
+from datetime import date, timedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -8,7 +9,9 @@ from services.backtest_service import BacktestService
 
 
 class FakeMarketService:
-    def get_price_history_range(self, start: date, end: date, allow_fallback: bool = True):
+    def get_price_history_range(
+        self, start: date, end: date, allow_fallback: bool = True, index_type: str = "SP500"
+    ):
         history = []
         for i in range(250):
             dt = start + timedelta(days=i)
@@ -38,7 +41,7 @@ def test_backtest_generates_buy_and_sell_cycle():
     end = start + timedelta(days=249)
     service = BacktestService(FakeMarketService(), FakeMacroService(), FakeEventService())
 
-    result = service.run_backtest(start, end, initial_cash=1000.0)
+    result = service.run_backtest(start, end, initial_cash=1000.0, index_type="SP500")
 
     assert result["trade_count"] == 2
     assert result["trades"][0]["action"] == "BUY"

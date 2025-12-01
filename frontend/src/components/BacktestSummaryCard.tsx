@@ -9,6 +9,7 @@ const DEFAULT_REQUEST = {
   initial_cash: 1_000_000,
   sell_threshold: 80,
   buy_threshold: 40,
+  index_type: 'SP500' as const,
 }
 
 const currencyFmt = new Intl.NumberFormat('ja-JP', {
@@ -37,7 +38,7 @@ const formatPct = (v: unknown) => {
   return Number.isFinite(num) ? `${num.toFixed(2)} %` : '-'
 }
 
-export const BacktestSummaryCard: React.FC = () => {
+export const BacktestSummaryCard: React.FC<{ indexType: 'SP500' | 'TOPIX' }> = ({ indexType }) => {
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +47,7 @@ export const BacktestSummaryCard: React.FC = () => {
     try {
       setLoading(true)
       setError(null)
-      const res = await runBacktest(DEFAULT_REQUEST)
+      const res = await runBacktest({ ...DEFAULT_REQUEST, index_type: indexType })
       setResult(res)
     } catch (e: any) {
       console.error(e)
@@ -86,7 +87,7 @@ export const BacktestSummaryCard: React.FC = () => {
               トータルリターン: <strong>{formatPct(result.total_return_pct)}</strong>
             </Typography>
             <Typography variant="body2">
-              最大ドローダウン: <strong>{formatPct(result.max_drawdown)}</strong>
+              最大ドローダウン: <strong>{formatPct(result.max_drawdown_pct)}</strong>
             </Typography>
             <Typography variant="body2">
               売買回数: <strong>{result.trade_count ?? '-'} 回</strong>

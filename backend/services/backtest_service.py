@@ -71,9 +71,10 @@ class BacktestService:
         initial_cash: float,
         buy_threshold: float = 40.0,
         sell_threshold: float = 80.0,
+        index_type: str = "SP500",
     ) -> Dict:
         price_history = self.market_service.get_price_history_range(
-            start_date, end_date, allow_fallback=self.allow_fallback
+            start_date, end_date, allow_fallback=self.allow_fallback, index_type=index_type
         )
         if len(price_history) < 200:
             raise ValueError("Not enough price history to run backtest (need >= 200 days)")
