@@ -4,6 +4,7 @@ from datetime import date
 from math import floor
 from typing import Dict, List, Tuple
 
+import os
 from scoring.events import calculate_event_adjustment
 from scoring.macro import calculate_macro_score
 from scoring.technical import calculate_technical_score
@@ -15,6 +16,7 @@ class BacktestService:
         self.market_service = market_service
         self.macro_service = macro_service
         self.event_service = event_service
+        self.allow_fallback = os.getenv("BACKTEST_ALLOW_FALLBACK", "1") == "1"
 
     def _history_and_current(self, series: List[Tuple[date, float]], current: date):
         usable = [(d, v) for d, v in series if d <= current]
@@ -71,7 +73,7 @@ class BacktestService:
         sell_threshold: float = 80.0,
     ) -> Dict:
         price_history = self.market_service.get_price_history_range(
-            start_date, end_date, allow_fallback=False
+            start_date, end_date, allow_fallback=self.allow_fallback
         )
         if len(price_history) < 200:
             raise ValueError("Not enough price history to run backtest (need >= 200 days)")

@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import List, Optional
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -84,6 +85,8 @@ class BacktestResponse(BaseModel):
     portfolio_history: List[PortfolioPoint]
     buy_hold_history: List[PortfolioPoint]
 
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="S&P500 Timing API")
 
@@ -207,14 +210,21 @@ def evaluate(position: PositionRequest):
 
 @app.post("/api/backtest", response_model=BacktestResponse)
 def backtest(payload: BacktestRequest):
-    result = backtest_service.run_backtest(
-        payload.start_date,
-        payload.end_date,
-        payload.initial_cash,
-        payload.buy_threshold,
-        payload.sell_threshold,
-    )
-    return result
+    try:
+        result = backtest_service.run_backtest(
+            payload.start_date,
+            payload.end_date,
+            payload.initial_cash,
+            payload.buy_threshold,
+            payload.sell_threshold,
+        )
+        return result
+    except ValueError as exc:
+        logger.error("Backtest failed due to invalid input: %s", exc, exc_info=True)
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Backtest failed unexpectedly", exc_info=True)
+        raise HTTPException(status_code=502, detail="Backtest failed: external data unavailable")
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ class SP500MarketService:
     def __init__(self, symbol: Optional[str] = None):
         self.symbol = symbol or os.getenv("SP500_SYMBOL", "^GSPC")
         self.nav_api_base = os.getenv("SP500_NAV_API_BASE")
+        self.allow_synthetic_fallback = os.getenv("SP500_ALLOW_SYNTHETIC_FALLBACK", "1") == "1"
         self.start_price = 4000.0
 
     def _fetch_nav_history(self, start: date, end: date) -> List[Tuple[str, float]]:
@@ -42,13 +43,16 @@ class SP500MarketService:
             logger.warning("NAV API fallback due to error: %s", exc)
         return []
 
-    def _fallback_history(self, days: int = 260) -> List[Tuple[str, float]]:
-        today = date.today()
-        history = []
+    def _fallback_history(self, start: date, end: date) -> List[Tuple[str, float]]:
+        """Deterministic synthetic history (monotonic drift) for environments without market data."""
+
+        days = (end - start).days or 260
+        history: List[Tuple[str, float]] = []
         price = self.start_price
-        for i in range(days):
-            price += 1.5
-            history.append(((today - timedelta(days=days - i)).isoformat(), round(price, 2)))
+        for i in range(days + 1):
+            dt = start + timedelta(days=i)
+            price += 1.5  # constant drift for predictability
+            history.append((dt.isoformat(), round(price, 2)))
         return history
 
     def get_price_history(self) -> List[Tuple[str, float]]:
@@ -69,7 +73,7 @@ class SP500MarketService:
             ]
         except Exception as exc:
             logger.warning("Falling back to synthetic price history: %s", exc)
-            return self._fallback_history()
+            return self._fallback_history(start, today)
 
     def get_price_history_range(
         self, start: date, end: date, allow_fallback: bool = True
@@ -88,11 +92,10 @@ class SP500MarketService:
                 (idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()
             ]
         except Exception as exc:
-            logger.warning("Price history fetch failed (%s)", exc)
-            if not allow_fallback:
+            logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
+            if not allow_fallback or not self.allow_synthetic_fallback:
                 raise
-            days = (end - start).days or 260
-            return self._fallback_history(days)
+            return self._fallback_history(start, end)
 
     def get_usd_jpy(self) -> float:
         try:
@@ -137,7 +140,9 @@ class SP500MarketService:
 
         if history:
             return history[-1][1]
-        return self._fallback_history()[-1][1]
+        today = date.today()
+        synthetic = self._fallback_history(today - timedelta(days=30), today)
+        return synthetic[-1][1]
 
     def build_price_series_with_ma(self, history: List[Tuple[str, float]]):
         closes = [p[1] for p in history]
