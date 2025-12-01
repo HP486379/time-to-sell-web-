@@ -8,7 +8,7 @@ from services.backtest_service import BacktestService
 
 
 class FakeMarketService:
-    def get_price_history_range(self, start: date, end: date):
+    def get_price_history_range(self, start: date, end: date, allow_fallback: bool = True):
         history = []
         for i in range(250):
             dt = start + timedelta(days=i)

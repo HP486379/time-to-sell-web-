@@ -15,9 +15,12 @@ class MacroDataService:
         load_dotenv()
         self.fred_api_key = os.getenv("FRED_API_KEY")
 
-    def _synthetic_series(self, base: float, variance: float, points: int = 120) -> Tuple[List[float], float]:
-        history = [base + random.uniform(-variance, variance) for _ in range(points)]
-        current = base + variance * 0.5
+    def _synthetic_series(
+        self, base: float, variance: float, points: int = 120, seed_tag: str = "macro"
+    ) -> Tuple[List[float], float]:
+        rng = random.Random(f"{seed_tag}:{base}:{variance}:{points}")
+        history = [round(base + rng.uniform(-variance, variance), 4) for _ in range(points)]
+        current = round(base + variance * 0.5, 4)
         return history, current
 
     def _fetch_fred_series(self, series_id: str, start: date, end: Optional[date] = None) -> List[float]:
@@ -88,32 +91,35 @@ class MacroDataService:
             current = round(float(closes.iloc[-1]), 2)
             return history, current
         except Exception:
-            return self._synthetic_series(18.0, 5.0)
+            return self._synthetic_series(18.0, 5.0, seed_tag="vix")
 
     def _fetch_r10y(self) -> Tuple[List[float], float]:
         start = date.today() - timedelta(days=3650)
         values = self._fetch_fred_series("DGS10", start)
         if values:
             return values[:-1], values[-1]
-        return self._synthetic_series(3.5, 1.0)
+        return self._synthetic_series(3.5, 1.0, seed_tag="r10y")
 
     def _fetch_cpi(self) -> Tuple[List[float], float]:
         start = date.today() - timedelta(days=3650)
         values = self._fetch_fred_series("CPIAUCSL", start)
         if values:
             return values[:-1], values[-1]
-        return self._synthetic_series(4.0, 1.2)
+        return self._synthetic_series(4.0, 1.2, seed_tag="cpi")
 
     def _synthetic_series_with_dates(
-        self, start: date, end: date, base: float, variance: float
+        self, start: date, end: date, base: float, variance: float, seed_tag: str
     ) -> List[Tuple[date, float]]:
         days = (end - start).days
         if days <= 0:
             days = 30
+        rng = random.Random(
+            f"{seed_tag}:{base}:{variance}:{start.isoformat()}:{end.isoformat()}:{days}"
+        )
         series: List[Tuple[date, float]] = []
         value = base
         for i in range(days + 1):
-            value += random.uniform(-variance, variance)
+            value += rng.uniform(-variance, variance)
             series.append((start + timedelta(days=i), round(value, 3)))
         return series
 
@@ -125,7 +131,7 @@ class MacroDataService:
                 raise ValueError("empty vix range")
             return [(idx.date(), round(float(val), 3)) for idx, val in data["Close"].items()]
         except Exception:
-            return self._synthetic_series_with_dates(start, end, 18.0, 5.0)
+            return self._synthetic_series_with_dates(start, end, 18.0, 5.0, seed_tag="vix")
 
     def _fetch_r10y_range(self, start: date, end: date) -> List[Tuple[date, float]]:
         values = []
@@ -140,7 +146,7 @@ class MacroDataService:
             except Exception:
                 pass
         if not values:
-            values = self._synthetic_series_with_dates(start, end, 3.5, 1.0)
+            values = self._synthetic_series_with_dates(start, end, 3.5, 1.0, seed_tag="r10y")
         return values
 
     def _fetch_cpi_range(self, start: date, end: date) -> List[Tuple[date, float]]:
@@ -148,7 +154,7 @@ class MacroDataService:
         if self.fred_api_key:
             values = self._fetch_fred_series_with_dates("CPIAUCSL", start, end)
         if not values:
-            values = self._synthetic_series_with_dates(start, end, 4.0, 1.2)
+            values = self._synthetic_series_with_dates(start, end, 4.0, 1.2, seed_tag="cpi")
         return values
 
     def get_macro_series_range(self, start: date, end: date) -> Dict[str, List[Tuple[date, float]]]:

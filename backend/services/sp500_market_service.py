@@ -1,8 +1,13 @@
+import logging
 import os
 from datetime import date, timedelta
 from typing import List, Optional, Tuple
 
+import requests
 import yfinance as yf
+
+
+logger = logging.getLogger(__name__)
 
 
 class SP500MarketService:
@@ -10,7 +15,32 @@ class SP500MarketService:
 
     def __init__(self, symbol: Optional[str] = None):
         self.symbol = symbol or os.getenv("SP500_SYMBOL", "^GSPC")
+        self.nav_api_base = os.getenv("SP500_NAV_API_BASE")
         self.start_price = 4000.0
+
+    def _fetch_nav_history(self, start: date, end: date) -> List[Tuple[str, float]]:
+        """Optional custom NAV API (if provided by env) returning date/close pairs."""
+
+        if not self.nav_api_base:
+            return []
+
+        try:
+            resp = requests.get(
+                f"{self.nav_api_base.rstrip('/')}/history",
+                params={"symbol": self.symbol, "start": start.isoformat(), "end": end.isoformat()},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, list) and data:
+                return [
+                    (str(item["date"]), float(item["close"]))
+                    for item in data
+                    if "date" in item and "close" in item
+                ]
+        except Exception as exc:
+            logger.warning("NAV API fallback due to error: %s", exc)
+        return []
 
     def _fallback_history(self, days: int = 260) -> List[Tuple[str, float]]:
         today = date.today()
@@ -23,19 +53,32 @@ class SP500MarketService:
 
     def get_price_history(self) -> List[Tuple[str, float]]:
         try:
+            today = date.today()
+            start = today - timedelta(days=365)
+            nav_hist = self._fetch_nav_history(start, today)
+            if nav_hist:
+                return [(d, round(v, 2)) for d, v in nav_hist]
+
             ticker = yf.Ticker(self.symbol)
             hist = ticker.history(period="1y", interval="1d")
             if hist.empty:
-                return self._fallback_history()
+                raise ValueError("empty history")
             closes = hist["Close"].dropna()
             return [
                 (idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()
             ]
-        except Exception:
+        except Exception as exc:
+            logger.warning("Falling back to synthetic price history: %s", exc)
             return self._fallback_history()
 
-    def get_price_history_range(self, start: date, end: date) -> List[Tuple[str, float]]:
+    def get_price_history_range(
+        self, start: date, end: date, allow_fallback: bool = True
+    ) -> List[Tuple[str, float]]:
         try:
+            nav_hist = self._fetch_nav_history(start, end)
+            if nav_hist:
+                return [(d, round(v, 2)) for d, v in nav_hist]
+
             hist = yf.download(self.symbol, start=start, end=end + timedelta(days=1), interval="1d")
             hist = hist.dropna()
             if hist.empty:
@@ -44,7 +87,10 @@ class SP500MarketService:
             return [
                 (idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()
             ]
-        except Exception:
+        except Exception as exc:
+            logger.warning("Price history fetch failed (%s)", exc)
+            if not allow_fallback:
+                raise
             days = (end - start).days or 260
             return self._fallback_history(days)
 
