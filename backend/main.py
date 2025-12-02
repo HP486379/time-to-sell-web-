@@ -237,7 +237,10 @@ def backtest(payload: BacktestRequest):
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:  # pragma: no cover - defensive
         logger.error("Backtest failed unexpectedly", exc_info=True)
-        raise HTTPException(status_code=502, detail="Backtest failed: external data unavailable")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Backtest failed: external data unavailable (check network / API key / symbol). {exc}",
+        )
 
 
 if __name__ == "__main__":

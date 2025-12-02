@@ -113,7 +113,7 @@ class SP500MarketService:
             return [(idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
-            if not allow_fallback or not self.allow_synthetic_fallback:
+            if not (allow_fallback or self.allow_synthetic_fallback):
                 raise
             return self._fallback_history(start, end, index_type)
 

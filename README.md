@@ -22,14 +22,28 @@
    - ヘルスチェック: http://localhost:8000/api/health
 
 ### データソース設定
-- S&P500 のシンボルを変更したい場合: `.env` に `SP500_SYMBOL=VOO` のように指定します（デフォルトは ^GSPC）。
-- FRED API を利用して 10 年国債・CPI を取得する場合: `.env` に `FRED_API_KEY=<your_key>` を設定してください。未設定の場合は安全にダミー値へフォールバックします。
+- 実データのシンボル
+  - S&P500: `.env` に `SP500_SYMBOL=VOO` などを指定（デフォルトは `^GSPC`）。
+  - TOPIX: `.env` に `TOPIX_SYMBOL=1306.T`（TOPIX ETF）を指定（デフォルトも 1306.T）。
+- NAV API（任意）
+  - S&P500 NAV API: `SP500_NAV_API_BASE=https://example.com/nav-api`
+  - TOPIX NAV API: `TOPIX_NAV_API_BASE=https://example.com/nav-api`
+  - NAV API が設定されている場合は NAV を優先し、無い場合は yfinance の終値を利用します。
+- マクロ指標（FRED）
+  - 10年国債利回り / CPI の実データ取得には `FRED_API_KEY=<your_key>` を設定してください。
+  - 未設定時は決定的な安全ダミー値にフォールバックします。
+- バックテストのフォールバック制御
+  - 実データ取得に失敗した際に疑似データへ切り替えてバックテストを継続したい場合は、`.env` に以下を設定します。
+    - `BACKTEST_ALLOW_FALLBACK=1`
+    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1`（TOPIX も同設定で有効化されます）
+  - どちらか欠けている場合はフォールバックせずに 502 を返します。502 の詳細には `external data unavailable (check network / API key / symbol)` が含まれます。
+- 環境変数のサンプルは `.env.example` を参照してください。
 - 基準価額（円）の取得:
   - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
   - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
 - シンプルバックテスト（閾値売買）:
-  - `POST /api/backtest` に `{ "start_date": "2004-01-01", "end_date": "2024-12-31", "initial_cash": 1000000, "buy_threshold": 40, "sell_threshold": 80 }` のように渡すと、
-    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します。
+  - `POST /api/backtest` に `{ "start_date": "2004-01-01", "end_date": "2024-12-31", "initial_cash": 1000000, "buy_threshold": 40, "sell_threshold": 80, "index_type": "SP500" }` のように渡すと、
+    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します（`index_type` は `SP500` / `TOPIX`）。
 
 ※ ユニットテスト実行: `python -m pytest backend/tests`
 
