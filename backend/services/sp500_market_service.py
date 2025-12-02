@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 
 import requests
 import yfinance as yf
+from dotenv import load_dotenv
 
 
 logger = logging.getLogger(__name__)
@@ -15,25 +16,39 @@ class SP500MarketService:
     """Service that fetches live pricing via yfinance with an optional synthetic fallback."""
 
     def __init__(self, symbol: Optional[str] = None):
+        load_dotenv()
         self.symbol = symbol or os.getenv("SP500_SYMBOL", "^GSPC")
         self.nav_api_base = os.getenv("SP500_NAV_API_BASE")
         # TOPIX は指数よりも ETF のシンボルの方が取得安定するため 1306.T をデフォルトとする
         self.topix_symbol = os.getenv("TOPIX_SYMBOL", "1306.T")
         self.topix_nav_api_base = os.getenv("TOPIX_NAV_API_BASE")
-        # 実データを優先したいのでデフォルトはフォールバック無効
-        self.allow_synthetic_fallback = os.getenv("SP500_ALLOW_SYNTHETIC_FALLBACK", "0").lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
+        # 実データを優先するが、環境変数で指数ごとにフォールバック可否を制御する
+        self.allow_synthetic_fallback = self._flag("SP500_ALLOW_SYNTHETIC_FALLBACK", default=True)
+        self.allow_synthetic_fallback_topix = self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True)
         self.start_prices = {"SP500": 4000.0, "TOPIX": 1500.0}
+
+        logger.info(
+            "[MARKET CONFIG] SP500_SYMBOL=%s TOPIX_SYMBOL=%s SP500_FALLBACK=%s TOPIX_FALLBACK=%s",
+            self.symbol,
+            self.topix_symbol,
+            self.allow_synthetic_fallback,
+            self.allow_synthetic_fallback_topix,
+        )
+
+    def _flag(self, name: str, default: bool = False) -> bool:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        return raw.lower() in {"1", "true", "yes", "on"}
 
     def _resolve_symbol(self, index_type: str) -> str:
         return self.topix_symbol if index_type == "TOPIX" else self.symbol
 
     def _resolve_nav_base(self, index_type: str) -> Optional[str]:
         return self.topix_nav_api_base if index_type == "TOPIX" else self.nav_api_base
+
+    def _allow_synthetic_for_index(self, index_type: str) -> bool:
+        return self.allow_synthetic_fallback_topix if index_type == "TOPIX" else self.allow_synthetic_fallback
 
     def _fetch_nav_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
         """Optional custom NAV API (if provided by env) returning date/close pairs."""
@@ -108,11 +123,13 @@ class SP500MarketService:
                 return str(idx)
 
     def get_price_history(self, index_type: str = "SP500") -> List[Tuple[str, float]]:
+        today = date.today()
+        start = today - timedelta(days=365)
+        allow_synth = self._allow_synthetic_for_index(index_type)
         try:
-            today = date.today()
-            start = today - timedelta(days=365)
             nav_hist = self._fetch_nav_history(start, today, index_type)
             if nav_hist:
+                logger.info("Using NAV history for %s (%d pts)", index_type, len(nav_hist))
                 return [(d, round(v, 2)) for d, v in nav_hist]
 
             ticker = yf.Ticker(self._resolve_symbol(index_type))
@@ -120,17 +137,23 @@ class SP500MarketService:
             if hist.empty:
                 raise ValueError("empty history")
             closes = hist["Close"].dropna()
+            logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
-            logger.warning("Falling back to synthetic price history: %s", exc)
+            logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
+            if not allow_synth:
+                raise
             return self._fallback_history(start, today, index_type)
 
     def get_price_history_range(
         self, start: date, end: date, allow_fallback: bool = True, index_type: str = "SP500"
     ) -> List[Tuple[str, float]]:
+        allow_synth = self._allow_synthetic_for_index(index_type)
+        fallback_allowed = allow_fallback and allow_synth
         try:
             nav_hist = self._fetch_nav_history(start, end, index_type)
             if nav_hist:
+                logger.info("Using NAV history for %s (%d pts)", index_type, len(nav_hist))
                 return [(d, round(v, 2)) for d, v in nav_hist]
 
             hist = yf.download(
@@ -140,10 +163,11 @@ class SP500MarketService:
             if hist.empty:
                 raise ValueError("empty history")
             closes = hist["Close"]
+            logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
-            if not (allow_fallback or self.allow_synthetic_fallback):
+            if not fallback_allowed:
                 raise
             return self._fallback_history(start, end, index_type)
 

@@ -4,6 +4,7 @@ from datetime import date
 from math import floor
 from typing import Dict, List, Tuple
 
+import logging
 import os
 from scoring.events import calculate_event_adjustment
 from scoring.macro import calculate_macro_score
@@ -23,6 +24,9 @@ class BacktestService:
             "yes",
             "on",
         }
+        logging.getLogger(__name__).info(
+            "[BACKTEST CONFIG] BACKTEST_ALLOW_FALLBACK=%s", self.allow_fallback
+        )
 
     def _history_and_current(self, series: List[Tuple[date, float]], current: date):
         usable = [(d, v) for d, v in series if d <= current]

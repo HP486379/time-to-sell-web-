@@ -31,9 +31,9 @@
   - マクロ指標: FRED (`FRED_API_KEY` がある場合) → 無い場合は yfinance の代替 → それでも取得できなければ決定的なダミー値
 - バックテストのフォールバック制御（疑似データを許可する場合）
   - 取得失敗時に決定的な疑似系列へ切り替えるには、真偽値として解釈される値（`1` / `true` / `yes` / `on`）をセットしてください。
-    - `BACKTEST_ALLOW_FALLBACK=1`
-    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1`（TOPIX も同設定で有効化されます）
-  - 設定しない（=0/false）場合はフォールバックせず 502 を返します。メッセージ: `external data unavailable (check network / API key / symbol)`
+    - `BACKTEST_ALLOW_FALLBACK=1`（バックテスト時にフォールバックを許可するか）
+    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1`（指数ごとに疑似価格履歴を許可するか）
+  - いずれかが 0/false の場合はその指数でフォールバックせず、外部データ取得に失敗すると 502 を返します。メッセージ: `external data unavailable (check network / API key / symbol)`
 - 基準価額（円）の取得:
   - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
   - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
@@ -45,13 +45,16 @@
 - ローカル検証（疑似データのみで完結させたい場合）
   - `BACKTEST_ALLOW_FALLBACK=1`
   - `SP500_ALLOW_SYNTHETIC_FALLBACK=1`
+  - `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1`
   - 実データ用キーは未設定でも 200 が返り、決定的な疑似系列で計算されます。
 - 本番想定（実データ優先・失敗時フォールバック）
   - `SP500_SYMBOL=VOO`（または好みの S&P500 連動銘柄）
   - `TOPIX_SYMBOL=1306.T`（任意の TOPIX 連動銘柄）
   - `FRED_API_KEY=<your_key>`（マクロ指標が実データになります）
-  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
+  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
   - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` を追加設定
+
+バックエンド起動時には、マーケットサービスとバックテストの各フォールバック設定がログに出力されます（例: `[MARKET CONFIG] ...`, `[BACKTEST CONFIG] ...`）。外部データ経路が使われたかどうかも INFO ログで確認できます。
 
 ※ ユニットテスト実行: `python -m pytest backend/tests`
 
