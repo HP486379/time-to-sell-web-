@@ -37,8 +37,7 @@ import EventList from './EventList'
 import { tooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
-import BacktestSummaryCard from './BacktestSummaryCard'
-import { Link as RouterLink } from 'react-router-dom'
+import UridokiKunAvatar from './UridokiKunAvatar'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -211,12 +210,22 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </AnimatePresence>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Stack spacing={2}>
-            <BacktestSummaryCard indexType={indexType} />
-            <Button component={RouterLink} to="/backtest" variant="outlined" color="secondary">
-              詳細バックテストを開く
-            </Button>
-          </Stack>
+          <Card
+            sx={{
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 3,
+            }}
+          >
+            <Box textAlign="center">
+              <UridokiKunAvatar level={getAvatarLevel(response?.scores?.total)} size={220} animated />
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+                売り時くん
+              </Typography>
+            </Box>
+          </Card>
         </Grid>
       </Grid>
 
@@ -321,6 +330,14 @@ function getScoreZoneText(score?: number) {
   if (score >= 40) return '現在のスコアは「平均的な水準」です。'
   if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
   return '現在のスコアは「かなり低い水準」です。'
+}
+
+function getAvatarLevel(score?: number): 'strong-sell' | 'sell' | 'hold' | 'buy' {
+  if (score === undefined) return 'hold'
+  if (score >= 80) return 'strong-sell'
+  if (score >= 60) return 'sell'
+  if (score >= 40) return 'hold'
+  return 'buy'
 }
 
 function buildHighlights(response: EvaluateResponse | null): { icon: string; text: string }[] {
