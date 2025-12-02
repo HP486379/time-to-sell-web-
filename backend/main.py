@@ -239,7 +239,7 @@ def backtest(payload: BacktestRequest):
         logger.error("Backtest failed unexpectedly", exc_info=True)
         raise HTTPException(
             status_code=502,
-            detail=f"Backtest failed: external data unavailable (check network / API key / symbol). {exc}",
+            detail="Backtest failed: external data unavailable (check network / API key / symbol).",
         )
 
 

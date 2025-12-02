@@ -25,25 +25,33 @@
 - 実データのシンボル
   - S&P500: `.env` に `SP500_SYMBOL=VOO` などを指定（デフォルトは `^GSPC`）。
   - TOPIX: `.env` に `TOPIX_SYMBOL=1306.T`（TOPIX ETF）を指定（デフォルトも 1306.T）。
-- NAV API（任意）
-  - S&P500 NAV API: `SP500_NAV_API_BASE=https://example.com/nav-api`
-  - TOPIX NAV API: `TOPIX_NAV_API_BASE=https://example.com/nav-api`
-  - NAV API が設定されている場合は NAV を優先し、無い場合は yfinance の終値を利用します。
-- マクロ指標（FRED）
-  - 10年国債利回り / CPI の実データ取得には `FRED_API_KEY=<your_key>` を設定してください。
-  - 未設定時は決定的な安全ダミー値にフォールバックします。
-- バックテストのフォールバック制御
-  - 実データ取得に失敗した際に疑似データへ切り替えてバックテストを継続したい場合は、`.env` に以下を設定します。
+- 実データ取得元
+  - 株価・指数: yfinance（S&P500 / TOPIX いずれも指定シンボルの終値を取得）
+  - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用
+  - マクロ指標: FRED (`FRED_API_KEY` がある場合) → 無い場合は yfinance の代替 → それでも取得できなければ決定的なダミー値
+- バックテストのフォールバック制御（疑似データを許可する場合）
+  - 取得失敗時に決定的な疑似系列へ切り替えるには、真偽値として解釈される値（`1` / `true` / `yes` / `on`）をセットしてください。
     - `BACKTEST_ALLOW_FALLBACK=1`
     - `SP500_ALLOW_SYNTHETIC_FALLBACK=1`（TOPIX も同設定で有効化されます）
-  - どちらか欠けている場合はフォールバックせずに 502 を返します。502 の詳細には `external data unavailable (check network / API key / symbol)` が含まれます。
-- 環境変数のサンプルは `.env.example` を参照してください。
+  - 設定しない（=0/false）場合はフォールバックせず 502 を返します。メッセージ: `external data unavailable (check network / API key / symbol)`
 - 基準価額（円）の取得:
   - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
   - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
 - シンプルバックテスト（閾値売買）:
   - `POST /api/backtest` に `{ "start_date": "2004-01-01", "end_date": "2024-12-31", "initial_cash": 1000000, "buy_threshold": 40, "sell_threshold": 80, "index_type": "SP500" }` のように渡すと、
     日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します（`index_type` は `SP500` / `TOPIX`）。
+
+#### 環境設定の例
+- ローカル検証（疑似データのみで完結させたい場合）
+  - `BACKTEST_ALLOW_FALLBACK=1`
+  - `SP500_ALLOW_SYNTHETIC_FALLBACK=1`
+  - 実データ用キーは未設定でも 200 が返り、決定的な疑似系列で計算されます。
+- 本番想定（実データ優先・失敗時フォールバック）
+  - `SP500_SYMBOL=VOO`（または好みの S&P500 連動銘柄）
+  - `TOPIX_SYMBOL=1306.T`（任意の TOPIX 連動銘柄）
+  - `FRED_API_KEY=<your_key>`（マクロ指標が実データになります）
+  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
+  - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` を追加設定
 
 ※ ユニットテスト実行: `python -m pytest backend/tests`
 

@@ -20,7 +20,12 @@ class SP500MarketService:
         self.topix_symbol = os.getenv("TOPIX_SYMBOL", "1306.T")
         self.topix_nav_api_base = os.getenv("TOPIX_NAV_API_BASE")
         # 実データを優先したいのでデフォルトはフォールバック無効
-        self.allow_synthetic_fallback = os.getenv("SP500_ALLOW_SYNTHETIC_FALLBACK", "0") == "1"
+        self.allow_synthetic_fallback = os.getenv("SP500_ALLOW_SYNTHETIC_FALLBACK", "0").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.start_prices = {"SP500": 4000.0, "TOPIX": 1500.0}
 
     def _resolve_symbol(self, index_type: str) -> str:
@@ -77,6 +82,16 @@ class SP500MarketService:
             history.append((dt.isoformat(), round(price, 2)))
         return history
 
+    def _to_iso_date(self, idx) -> str:
+        try:
+            return idx.date().isoformat()
+        except AttributeError:
+            try:
+                # pandas Timestamp may expose .to_pydatetime
+                return idx.to_pydatetime().date().isoformat()  # type: ignore[attr-defined]
+            except Exception:
+                return str(idx)
+
     def get_price_history(self, index_type: str = "SP500") -> List[Tuple[str, float]]:
         try:
             today = date.today()
@@ -90,7 +105,7 @@ class SP500MarketService:
             if hist.empty:
                 raise ValueError("empty history")
             closes = hist["Close"].dropna()
-            return [(idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()]
+            return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
             logger.warning("Falling back to synthetic price history: %s", exc)
             return self._fallback_history(start, today, index_type)
@@ -110,7 +125,7 @@ class SP500MarketService:
             if hist.empty:
                 raise ValueError("empty history")
             closes = hist["Close"]
-            return [(idx.date().isoformat(), round(float(val), 2)) for idx, val in closes.items()]
+            return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
             if not (allow_fallback or self.allow_synthetic_fallback):
