@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 from datetime import date, timedelta
 from typing import List, Optional, Tuple
 
@@ -64,22 +65,36 @@ class SP500MarketService:
         return []
 
     def _fallback_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
-        """Deterministicだが上下動を含むシンセティック履歴を生成する。
+        """決定的で過度に膨らまないシンセティック履歴を生成する。
 
-        実データが取得できない場合のみ使用し、単調増加でMDDが0%になることを防ぐ。
+        * 年率のドリフトは指数ごとに設定（S&P500: 約7%、TOPIX: 約4%）
+        * 日次の揺らぎを小さめに入れて最大ドローダウンが0%にならないようにする
+        * 週末はスキップし、営業日ベースで積み上げる
         """
 
-        days = (end - start).days or 260
+        annual_drift_map = {"SP500": 0.07, "TOPIX": 0.04}
+        annual_drift = annual_drift_map.get(index_type, 0.05)
+        daily_drift = annual_drift / 260.0
+
+        rng_seed = f"{index_type}:{start.isoformat()}:{end.isoformat()}"
+        rng = random.Random(rng_seed)
+
         history: List[Tuple[str, float]] = []
         price = self.start_prices.get(index_type, 4000.0)
-        for i in range(days + 1):
-            dt = start + timedelta(days=i)
-            # 緩やかな上昇トレンドに周期的な揺れを重ねる（決定論的）
-            drift = 1 + 0.00015  # 年率およそ5%相当
-            seasonal = 0.01 * (1 if (i // 90) % 2 == 0 else -1)  # 90日ごとにプラス/マイナス
-            wave = 0.003 * (1 if i % 14 < 7 else -1)  # 2週間周期の揺れ
-            price = max(1.0, price * drift + price * (seasonal + wave))
-            history.append((dt.isoformat(), round(price, 2)))
+
+        current = start
+        while current <= end:
+            if current.weekday() < 5:  # 月〜金のみ
+                noise = rng.uniform(-0.006, 0.006)  # ±0.6% 程度の揺らぎ
+                # 半年ごとに5%程度の調整を入れて drawdown を作る
+                if (current.timetuple().tm_yday // 182) % 2 == 1:
+                    noise -= 0.002
+
+                daily_change = 1 + daily_drift + noise
+                price = max(1.0, price * daily_change)
+                history.append((current.isoformat(), round(price, 2)))
+            current += timedelta(days=1)
+
         return history
 
     def _to_iso_date(self, idx) -> str:
