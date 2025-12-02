@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from typing import Dict, List, Optional, Tuple
 
 import requests
+import pandas as pd
 import yfinance as yf
 from dotenv import load_dotenv
 
@@ -14,6 +15,16 @@ class MacroDataService:
     def __init__(self):
         load_dotenv()
         self.fred_api_key = os.getenv("FRED_API_KEY")
+
+    def _extract_close_series(self, df: pd.DataFrame) -> pd.Series:
+        close = df.get("Close")
+        if close is None:
+            close = df.get("Adj Close")
+        if close is None:
+            raise ValueError("close column missing")
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        return close.dropna()
 
     def _synthetic_series(
         self, base: float, variance: float, points: int = 120, seed_tag: str = "macro"
@@ -129,7 +140,8 @@ class MacroDataService:
             data = data.dropna()
             if data.empty:
                 raise ValueError("empty vix range")
-            return [(idx.date(), round(float(val), 3)) for idx, val in data["Close"].items()]
+            closes = self._extract_close_series(data)
+            return [(idx.date(), round(float(val), 3)) for idx, val in closes.items()]
         except Exception:
             return self._synthetic_series_with_dates(start, end, 18.0, 5.0, seed_tag="vix")
 
@@ -142,7 +154,8 @@ class MacroDataService:
                 data = yf.download("^TNX", start=start, end=end + timedelta(days=1), interval="1d")
                 data = data.dropna()
                 if not data.empty:
-                    values = [(idx.date(), round(float(val) / 10, 3)) for idx, val in data["Close"].items()]
+                    closes = self._extract_close_series(data)
+                    values = [(idx.date(), round(float(val) / 10, 3)) for idx, val in closes.items()]
             except Exception:
                 pass
         if not values:

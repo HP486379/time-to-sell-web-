@@ -4,3 +4,4 @@ pytest
 yfinance
 requests
 python-dotenv
+pandas

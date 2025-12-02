@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from typing import List, Optional, Tuple
 
 import requests
+import pandas as pd
 import yfinance as yf
 from dotenv import load_dotenv
 
@@ -34,6 +35,19 @@ class SP500MarketService:
             self.allow_synthetic_fallback,
             self.allow_synthetic_fallback_topix,
         )
+
+    def _extract_close_series(self, hist: pd.DataFrame) -> pd.Series:
+        """Extract a 1-D close/adj close series from yfinance DataFrame."""
+
+        close = hist.get("Close")
+        if close is None:
+            close = hist.get("Adj Close")
+        if close is None:
+            raise ValueError("close column missing")
+        # yfinance may return a DataFrame when using MultiIndex columns; squeeze to Series
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        return close.dropna()
 
     def _flag(self, name: str, default: bool = False) -> bool:
         raw = os.getenv(name)
@@ -136,7 +150,7 @@ class SP500MarketService:
             hist = ticker.history(period="1y", interval="1d")
             if hist.empty:
                 raise ValueError("empty history")
-            closes = hist["Close"].dropna()
+            closes = self._extract_close_series(hist)
             logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
@@ -162,7 +176,7 @@ class SP500MarketService:
             hist = hist.dropna()
             if hist.empty:
                 raise ValueError("empty history")
-            closes = hist["Close"]
+            closes = self._extract_close_series(hist)
             logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
