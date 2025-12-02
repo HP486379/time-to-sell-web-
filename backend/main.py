@@ -187,6 +187,18 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
     return snapshot
 
 
+@app.get("/api/sp500/price-history", response_model=List[PricePoint])
+def get_sp500_price_history():
+    snapshot = get_cached_snapshot(index_type=IndexType.SP500)
+    return snapshot["price_series"]
+
+
+@app.get("/api/topix/price-history", response_model=List[PricePoint])
+def get_topix_price_history():
+    snapshot = get_cached_snapshot(index_type=IndexType.TOPIX)
+    return snapshot["price_series"]
+
+
 def get_cached_snapshot(index_type: IndexType = IndexType.SP500):
     global _cached_snapshot, _cached_at
     now = datetime.utcnow()

@@ -82,6 +82,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [showDetails, setShowDetails] = useState(false)
   const [chartRange, setChartRange] = useState<ChartRange>('1y')
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
+  const [priceSeries, setPriceSeries] = useState<PricePoint[]>([])
 
   const fetchData = async (payload?: Partial<EvaluateRequest>) => {
     try {
@@ -93,6 +94,18 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
       if (payload) setLastRequest((prev) => ({ ...prev, ...payload, index_type: indexType }))
     } catch (e: any) {
       setError(e.message)
+    }
+  }
+
+  const getPriceHistoryEndpoint = (targetIndex: 'SP500' | 'TOPIX') =>
+    targetIndex === 'TOPIX' ? '/api/topix/price-history' : '/api/sp500/price-history'
+
+  const fetchPriceSeries = async (targetIndex: 'SP500' | 'TOPIX') => {
+    try {
+      const res = await apiClient.get<PricePoint[]>(getPriceHistoryEndpoint(targetIndex))
+      setPriceSeries(res.data)
+    } catch (e: any) {
+      console.error('価格履歴取得に失敗しました', e)
     }
   }
 
@@ -116,6 +129,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const fetchAll = () => {
     fetchData()
+    fetchPriceSeries(indexType)
     fetchNavs()
   }
 
@@ -130,10 +144,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     return lastUpdated.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
   }, [lastUpdated])
 
-  const filteredSeries = useMemo(
-    () => filterPriceSeries(response?.price_series ?? [], chartRange),
-    [response?.price_series, chartRange]
-  )
+  const filteredSeries = useMemo(() => filterPriceSeries(priceSeries, chartRange), [priceSeries, chartRange])
 
   const highlights = useMemo(() => buildHighlights(response), [response])
 
@@ -213,7 +224,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         <CardContent>
           <Tooltip title={tooltips.chart.title} arrow>
             <Typography variant="h6" gutterBottom component="div">
-              S&P500 価格トレンド
+              {indexType === 'TOPIX' ? 'TOPIX 価格トレンド' : 'S&P500 価格トレンド'}
             </Typography>
           </Tooltip>
           <Box display="flex" justifyContent="flex-end" mb={1}>
