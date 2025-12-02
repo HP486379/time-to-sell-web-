@@ -16,10 +16,12 @@ class SP500MarketService:
     def __init__(self, symbol: Optional[str] = None):
         self.symbol = symbol or os.getenv("SP500_SYMBOL", "^GSPC")
         self.nav_api_base = os.getenv("SP500_NAV_API_BASE")
-        self.topix_symbol = os.getenv("TOPIX_SYMBOL", "^TOPX")
+        # TOPIX は指数よりも ETF のシンボルの方が取得安定するため 1306.T をデフォルトとする
+        self.topix_symbol = os.getenv("TOPIX_SYMBOL", "1306.T")
         self.topix_nav_api_base = os.getenv("TOPIX_NAV_API_BASE")
-        self.allow_synthetic_fallback = os.getenv("SP500_ALLOW_SYNTHETIC_FALLBACK", "1") == "1"
-        self.start_prices = {"SP500": 4000.0, "TOPIX": 2000.0}
+        # 実データを優先したいのでデフォルトはフォールバック無効
+        self.allow_synthetic_fallback = os.getenv("SP500_ALLOW_SYNTHETIC_FALLBACK", "0") == "1"
+        self.start_prices = {"SP500": 4000.0, "TOPIX": 1500.0}
 
     def _resolve_symbol(self, index_type: str) -> str:
         return self.topix_symbol if index_type == "TOPIX" else self.symbol
@@ -57,14 +59,21 @@ class SP500MarketService:
         return []
 
     def _fallback_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
-        """Deterministic synthetic history (monotonic drift) for environments without market data."""
+        """Deterministicだが上下動を含むシンセティック履歴を生成する。
+
+        実データが取得できない場合のみ使用し、単調増加でMDDが0%になることを防ぐ。
+        """
 
         days = (end - start).days or 260
         history: List[Tuple[str, float]] = []
         price = self.start_prices.get(index_type, 4000.0)
         for i in range(days + 1):
             dt = start + timedelta(days=i)
-            price += 1.5  # constant drift for predictability
+            # 緩やかな上昇トレンドに周期的な揺れを重ねる（決定論的）
+            drift = 1 + 0.00015  # 年率およそ5%相当
+            seasonal = 0.01 * (1 if (i // 90) % 2 == 0 else -1)  # 90日ごとにプラス/マイナス
+            wave = 0.003 * (1 if i % 14 < 7 else -1)  # 2週間周期の揺れ
+            price = max(1.0, price * drift + price * (seasonal + wave))
             history.append((dt.isoformat(), round(price, 2)))
         return history
 

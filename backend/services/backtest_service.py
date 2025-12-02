@@ -16,7 +16,8 @@ class BacktestService:
         self.market_service = market_service
         self.macro_service = macro_service
         self.event_service = event_service
-        self.allow_fallback = os.getenv("BACKTEST_ALLOW_FALLBACK", "1") == "1"
+        # 実データを優先し、明示的に許可されたときのみシンセティックを利用する
+        self.allow_fallback = os.getenv("BACKTEST_ALLOW_FALLBACK", "0") == "1"
 
     def _history_and_current(self, series: List[Tuple[date, float]], current: date):
         usable = [(d, v) for d, v in series if d <= current]
