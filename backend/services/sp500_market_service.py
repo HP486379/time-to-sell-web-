@@ -18,22 +18,33 @@ class SP500MarketService:
 
     def __init__(self, symbol: Optional[str] = None):
         load_dotenv()
-        self.symbol = symbol or os.getenv("SP500_SYMBOL", "^GSPC")
-        self.nav_api_base = os.getenv("SP500_NAV_API_BASE")
-        # TOPIX は指数よりも ETF のシンボルの方が取得安定するため 1306.T をデフォルトとする
-        self.topix_symbol = os.getenv("TOPIX_SYMBOL", "1306.T")
-        self.topix_nav_api_base = os.getenv("TOPIX_NAV_API_BASE")
-        # 実データを優先するが、環境変数で指数ごとにフォールバック可否を制御する
-        self.allow_synthetic_fallback = self._flag("SP500_ALLOW_SYNTHETIC_FALLBACK", default=True)
-        self.allow_synthetic_fallback_topix = self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True)
-        self.start_prices = {"SP500": 4000.0, "TOPIX": 1500.0}
+        self.symbol_map = {
+            "SP500": symbol or os.getenv("SP500_SYMBOL", "^GSPC"),
+            "TOPIX": os.getenv("TOPIX_SYMBOL", "1306.T"),
+            "NIKKEI": os.getenv("NIKKEI_SYMBOL", "^N225"),
+            "NIFTY50": os.getenv("NIFTY50_SYMBOL", "^NSEI"),
+        }
+
+        self.nav_api_map = {
+            "SP500": os.getenv("SP500_NAV_API_BASE"),
+            "TOPIX": os.getenv("TOPIX_NAV_API_BASE"),
+            "NIKKEI": os.getenv("NIKKEI_NAV_API_BASE"),
+            "NIFTY50": os.getenv("NIFTY50_NAV_API_BASE"),
+        }
+
+        self.allow_synth_map = {
+            "SP500": self._flag("SP500_ALLOW_SYNTHETIC_FALLBACK", default=True),
+            "TOPIX": self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True),
+            "NIKKEI": self._flag("NIKKEI_ALLOW_SYNTHETIC_FALLBACK", default=True),
+            "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
+        }
+
+        self.start_prices = {"SP500": 4000.0, "TOPIX": 1500.0, "NIKKEI": 15000.0, "NIFTY50": 4000.0}
 
         logger.info(
-            "[MARKET CONFIG] SP500_SYMBOL=%s TOPIX_SYMBOL=%s SP500_FALLBACK=%s TOPIX_FALLBACK=%s",
-            self.symbol,
-            self.topix_symbol,
-            self.allow_synthetic_fallback,
-            self.allow_synthetic_fallback_topix,
+            "[MARKET CONFIG] symbols=%s fallback=%s",
+            self.symbol_map,
+            self.allow_synth_map,
         )
 
     def _extract_close_series(self, hist: pd.DataFrame) -> pd.Series:
@@ -56,13 +67,13 @@ class SP500MarketService:
         return raw.lower() in {"1", "true", "yes", "on"}
 
     def _resolve_symbol(self, index_type: str) -> str:
-        return self.topix_symbol if index_type == "TOPIX" else self.symbol
+        return self.symbol_map.get(index_type, self.symbol_map["SP500"])
 
     def _resolve_nav_base(self, index_type: str) -> Optional[str]:
-        return self.topix_nav_api_base if index_type == "TOPIX" else self.nav_api_base
+        return self.nav_api_map.get(index_type)
 
     def _allow_synthetic_for_index(self, index_type: str) -> bool:
-        return self.allow_synthetic_fallback_topix if index_type == "TOPIX" else self.allow_synthetic_fallback
+        return self.allow_synth_map.get(index_type, True)
 
     def _fetch_nav_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
         """Optional custom NAV API (if provided by env) returning date/close pairs."""
@@ -101,7 +112,7 @@ class SP500MarketService:
         * 週末はスキップし、営業日ベースで積み上げる
         """
 
-        annual_drift_map = {"SP500": 0.07, "TOPIX": 0.04}
+        annual_drift_map = {"SP500": 0.07, "TOPIX": 0.04, "NIKKEI": 0.05, "NIFTY50": 0.08}
         annual_drift = annual_drift_map.get(index_type, 0.05)
         daily_drift = annual_drift / 260.0
 

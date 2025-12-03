@@ -9,14 +9,17 @@ import {
   TextField,
   Button,
   Typography,
-  ToggleButtonGroup,
-  ToggleButton,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import dayjs from 'dayjs'
 import { runBacktest } from '../apis'
 import type { BacktestRequest, BacktestResult } from '../types/apis'
+import { INDEX_LABELS, type IndexType } from '../types/index'
 
 const DEFAULT_REQUEST: BacktestRequest = {
   start_date: '2014-01-01',
@@ -106,20 +109,21 @@ export function BacktestPage() {
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Stack spacing={1}>
-                  <Typography variant="caption" color="text.secondary">
-                    対象インデックス
-                  </Typography>
-                  <ToggleButtonGroup
+                <FormControl fullWidth size="small">
+                  <InputLabel id="index-select">対象インデックス</InputLabel>
+                  <Select
+                    labelId="index-select"
                     value={params.index_type}
-                    exclusive
-                    onChange={(_, val) => val && handleChange('index_type', val)}
-                    size="small"
+                    label="対象インデックス"
+                    onChange={(e) => handleChange('index_type', e.target.value as IndexType)}
                   >
-                    <ToggleButton value="SP500">S&P500</ToggleButton>
-                    <ToggleButton value="TOPIX">TOPIX</ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
+                    {(Object.keys(INDEX_LABELS) as IndexType[]).map((key) => (
+                      <MenuItem key={key} value={key}>
+                        {INDEX_LABELS[key]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <TextField

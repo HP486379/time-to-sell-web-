@@ -18,6 +18,10 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -38,6 +42,7 @@ import { tooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
+import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -76,7 +81,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [syntheticNav, setSyntheticNav] = useState<SyntheticNavResponse | null>(null)
   const [fundNav, setFundNav] = useState<FundNavResponse | null>(null)
   const [lastRequest, setLastRequest] = useState<EvaluateRequest>(defaultRequest)
-  const [indexType, setIndexType] = useState<'SP500' | 'TOPIX'>('SP500')
+  const [indexType, setIndexType] = useState<IndexType>('SP500')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [chartRange, setChartRange] = useState<ChartRange>('1y')
@@ -96,10 +101,17 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     }
   }
 
-  const getPriceHistoryEndpoint = (targetIndex: 'SP500' | 'TOPIX') =>
-    targetIndex === 'TOPIX' ? '/api/topix/price-history' : '/api/sp500/price-history'
+  const getPriceHistoryEndpoint = (targetIndex: IndexType) => {
+    const map: Record<IndexType, string> = {
+      SP500: '/api/sp500/price-history',
+      TOPIX: '/api/topix/price-history',
+      NIKKEI: '/api/nikkei/price-history',
+      NIFTY50: '/api/nifty50/price-history',
+    }
+    return map[targetIndex]
+  }
 
-  const fetchPriceSeries = async (targetIndex: 'SP500' | 'TOPIX') => {
+  const fetchPriceSeries = async (targetIndex: IndexType) => {
     try {
       const res = await apiClient.get<PricePoint[]>(getPriceHistoryEndpoint(targetIndex))
       setPriceSeries(res.data)
@@ -153,20 +165,21 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
       <Box display="flex" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap">
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            対象インデックス
-          </Typography>
-          <ToggleButtonGroup
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel id="index-select-label">対象インデックス</InputLabel>
+          <Select
+            labelId="index-select-label"
             value={indexType}
-            exclusive
-            size="small"
-            onChange={(_, val) => val && setIndexType(val)}
+            label="対象インデックス"
+            onChange={(e) => setIndexType(e.target.value as IndexType)}
           >
-            <ToggleButton value="SP500">S&P500</ToggleButton>
-            <ToggleButton value="TOPIX">TOPIX</ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
+            {(Object.keys(INDEX_LABELS) as IndexType[]).map((key) => (
+              <MenuItem key={key} value={key}>
+                {INDEX_LABELS[key]}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Box display="flex" alignItems="center" gap={1}>
           <Chip label={`最終更新: ${lastUpdatedLabel}`} size="small" />
           <Tooltip title="最新データを取得" arrow>
@@ -233,7 +246,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         <CardContent>
           <Tooltip title={tooltips.chart.title} arrow>
             <Typography variant="h6" gutterBottom component="div">
-              {indexType === 'TOPIX' ? 'TOPIX 価格トレンド' : 'S&P500 価格トレンド'}
+              {PRICE_TITLE_MAP[indexType]}
             </Typography>
           </Tooltip>
           <Box display="flex" justifyContent="flex-end" mb={1}>

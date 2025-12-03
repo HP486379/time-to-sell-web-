@@ -1,7 +1,9 @@
+import type { IndexType } from './index'
+
 export interface EvaluateRequest {
   total_quantity: number
   avg_cost: number
-  index_type: 'SP500' | 'TOPIX'
+  index_type: IndexType
 }
 
 export interface EconomicEvent {

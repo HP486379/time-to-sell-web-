@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, Button, Typography, Stack } from '@mui/material'
 import { runBacktest } from '../apis'
 import type { BacktestResult } from '../types/apis'
+import type { IndexType } from '../types/index'
 
 const DEFAULT_REQUEST = {
   start_date: '2014-01-01',
@@ -38,7 +39,7 @@ const formatPct = (v: unknown) => {
   return Number.isFinite(num) ? `${num.toFixed(2)} %` : '-'
 }
 
-export const BacktestSummaryCard: React.FC<{ indexType: 'SP500' | 'TOPIX' }> = ({ indexType }) => {
+export const BacktestSummaryCard: React.FC<{ indexType: IndexType }> = ({ indexType }) => {
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

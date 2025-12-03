@@ -20,6 +20,8 @@ from services.backtest_service import BacktestService
 class IndexType(str, Enum):
     SP500 = "SP500"
     TOPIX = "TOPIX"
+    NIKKEI = "NIKKEI"
+    NIFTY50 = "NIFTY50"
 
 
 class PositionRequest(BaseModel):
@@ -196,6 +198,18 @@ def get_sp500_price_history():
 @app.get("/api/topix/price-history", response_model=List[PricePoint])
 def get_topix_price_history():
     snapshot = get_cached_snapshot(index_type=IndexType.TOPIX)
+    return snapshot["price_series"]
+
+
+@app.get("/api/nikkei/price-history", response_model=List[PricePoint])
+def get_nikkei_price_history():
+    snapshot = get_cached_snapshot(index_type=IndexType.NIKKEI)
+    return snapshot["price_series"]
+
+
+@app.get("/api/nifty50/price-history", response_model=List[PricePoint])
+def get_nifty_price_history():
+    snapshot = get_cached_snapshot(index_type=IndexType.NIFTY50)
     return snapshot["price_series"]
 
 
