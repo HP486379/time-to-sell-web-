@@ -1,12 +1,13 @@
 import { Card, CardContent, Typography, List, ListItem, ListItemText, Chip, Stack, Tooltip } from '@mui/material'
 import { EvaluateResponse } from '../types/api'
-import { tooltips } from '../tooltipTexts'
+import type { TooltipTexts } from '../tooltipTexts'
 
 interface Props {
   eventDetails?: EvaluateResponse['event_details']
+  tooltips: TooltipTexts
 }
 
-function EventList({ eventDetails }: Props) {
+function EventList({ eventDetails, tooltips }: Props) {
   const effective = eventDetails?.effective_event
   const items = effective
     ? [effective]

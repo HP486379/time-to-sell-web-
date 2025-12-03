@@ -1,5 +1,5 @@
 import { Card, CardContent, Grid, Typography, Box, Chip, useTheme, alpha, Tooltip } from '@mui/material'
-import { tooltips } from '../tooltipTexts'
+import type { TooltipTexts } from '../tooltipTexts'
 
 interface Props {
   macroDetails?: {
@@ -8,6 +8,7 @@ interface Props {
     p_vix: number
     M: number
   }
+  tooltips: TooltipTexts
 }
 
 const macroInfo = [
@@ -16,7 +17,7 @@ const macroInfo = [
   { key: 'p_vix', title: 'VIX', color: '#22d3ee', desc: ['穏やか', '注意', '警戒'] },
 ]
 
-function MacroCards({ macroDetails }: Props) {
+function MacroCards({ macroDetails, tooltips }: Props) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const cardBg = isDark

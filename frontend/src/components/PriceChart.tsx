@@ -1,14 +1,15 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 import { Tooltip as MuiTooltip } from '@mui/material'
 import { PricePoint } from '../types/api'
-import { tooltips } from '../tooltipTexts'
+import type { TooltipTexts } from '../tooltipTexts'
 
 type Props = {
   priceSeries: PricePoint[]
   simple?: boolean
+  tooltips: TooltipTexts
 }
 
-function PriceChart({ priceSeries, simple = false }: Props) {
+function PriceChart({ priceSeries, simple = false, tooltips }: Props) {
   if (!priceSeries.length) {
     return (
       <ResponsiveContainer width="100%" height={240}>

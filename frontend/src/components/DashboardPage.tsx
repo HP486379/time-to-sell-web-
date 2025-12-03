@@ -38,7 +38,7 @@ import PositionForm from './PositionForm'
 import PriceChart from './PriceChart'
 import MacroCards from './MacroCards'
 import EventList from './EventList'
-import { tooltips } from '../tooltipTexts'
+import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
@@ -87,6 +87,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [chartRange, setChartRange] = useState<ChartRange>('1y')
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
   const [priceSeries, setPriceSeries] = useState<PricePoint[]>([])
+  const tooltipTexts = useMemo(() => buildTooltips(indexType), [indexType])
 
   const fetchData = async (payload?: Partial<EvaluateRequest>) => {
     try {
@@ -203,12 +204,14 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                     zoneText={zoneText}
                     onShowDetails={() => setShowDetails((prev) => !prev)}
                     expanded={showDetails}
+                    tooltips={tooltipTexts}
                   />
                   <Collapse in={showDetails}>
                     <ScoreSummaryCard
                       scores={response?.scores}
                       technical={response?.technical_details}
                       macro={response?.macro_details}
+                      tooltips={tooltipTexts}
                     />
                   </Collapse>
                 </Stack>
@@ -217,6 +220,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                   scores={response?.scores}
                   technical={response?.technical_details}
                   macro={response?.macro_details}
+                  tooltips={tooltipTexts}
                 />
               )}
             </motion.div>
@@ -244,7 +248,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
       <Card>
         <CardContent>
-          <Tooltip title={tooltips.chart.title} arrow>
+          <Tooltip title={tooltipTexts.chart.title} arrow>
             <Typography variant="h6" gutterBottom component="div">
               {PRICE_TITLE_MAP[indexType]}
             </Typography>
@@ -264,7 +268,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </Box>
           <AnimatePresence mode="wait">
             <motion.div key={`${chartRange}-${displayMode}`} variants={chartMotion} initial="initial" animate="animate" exit="exit">
-              <PriceChart priceSeries={filteredSeries} simple={displayMode === 'simple'} />
+              <PriceChart priceSeries={filteredSeries} simple={displayMode === 'simple'} tooltips={tooltipTexts} />
             </motion.div>
           </AnimatePresence>
         </CardContent>
@@ -272,10 +276,10 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
-          <MacroCards macroDetails={response?.macro_details} />
+          <MacroCards macroDetails={response?.macro_details} tooltips={tooltipTexts} />
         </Grid>
         <Grid item xs={12} md={5}>
-          <EventList eventDetails={response?.event_details} />
+          <EventList eventDetails={response?.event_details} tooltips={tooltipTexts} />
         </Grid>
       </Grid>
 
@@ -299,6 +303,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             pnl={response?.unrealized_pnl}
             syntheticNav={syntheticNav}
             fundNav={fundNav}
+            tooltips={tooltipTexts}
           />
         </DialogContent>
         <DialogActions>

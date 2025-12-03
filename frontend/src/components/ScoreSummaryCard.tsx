@@ -1,5 +1,5 @@
 import { Card, CardContent, Typography, LinearProgress, Stack, Box, alpha, useTheme, Tooltip } from '@mui/material'
-import { tooltips } from '../tooltipTexts'
+import type { TooltipTexts } from '../tooltipTexts'
 
 interface ScoreSummaryCardProps {
   scores?: {
@@ -11,9 +11,10 @@ interface ScoreSummaryCardProps {
   }
   technical?: { d: number; T_base: number; T_trend: number }
   macro?: { p_r: number; p_cpi: number; p_vix: number; M: number }
+  tooltips: TooltipTexts
 }
 
-function ScoreSummaryCard({ scores, technical, macro }: ScoreSummaryCardProps) {
+function ScoreSummaryCard({ scores, technical, macro, tooltips }: ScoreSummaryCardProps) {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const gradientStart = isDark ? '#101726' : alpha(theme.palette.primary.light, 0.2)

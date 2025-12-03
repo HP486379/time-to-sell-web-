@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Card, CardContent, TextField, Button, Stack, Typography, Box, Divider, Tooltip } from '@mui/material'
 import { EvaluateRequest, FundNavResponse, SyntheticNavResponse } from '../types/api'
-import { tooltips } from '../tooltipTexts'
+import type { TooltipTexts } from '../tooltipTexts'
 
 interface Props {
   onSubmit: (req: Pick<EvaluateRequest, 'total_quantity' | 'avg_cost'>) => void
@@ -9,9 +9,10 @@ interface Props {
   pnl?: number
   syntheticNav?: SyntheticNavResponse | null
   fundNav?: FundNavResponse | null
+  tooltips: TooltipTexts
 }
 
-function PositionForm({ onSubmit, marketValue, pnl, syntheticNav, fundNav }: Props) {
+function PositionForm({ onSubmit, marketValue, pnl, syntheticNav, fundNav, tooltips }: Props) {
   const [quantity, setQuantity] = useState('77384')
   const [avgCost, setAvgCost] = useState('21458')
 
@@ -33,7 +34,7 @@ function PositionForm({ onSubmit, marketValue, pnl, syntheticNav, fundNav }: Pro
           <Tooltip title={tooltips.position.card} arrow>
             <Typography variant="h6" component="div">ポジション入力</Typography>
           </Tooltip>
-          <NavInfo syntheticNav={syntheticNav} fundNav={fundNav} />
+          <NavInfo syntheticNav={syntheticNav} fundNav={fundNav} tooltips={tooltips} />
           <Tooltip title={tooltips.position.quantity} arrow>
             <TextField
               label="保有数量"
@@ -105,9 +106,11 @@ function Metric({
 function NavInfo({
   syntheticNav,
   fundNav,
+  tooltips,
 }: {
   syntheticNav?: SyntheticNavResponse | null
   fundNav?: FundNavResponse | null
+  tooltips: TooltipTexts
 }) {
   const formatter = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
   const synthetic = syntheticNav ? formatter.format(syntheticNav.navJpy) : '--'

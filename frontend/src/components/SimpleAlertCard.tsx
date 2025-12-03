@@ -1,7 +1,7 @@
 import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip, Divider } from '@mui/material'
 import { keyframes } from '@mui/system'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import { tooltips } from '../tooltipTexts'
+import type { TooltipTexts } from '../tooltipTexts'
 import { UridokiKunAvatar, type SimpleAlertLevel } from './UridokiKunAvatar'
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   zoneText?: string
   onShowDetails: () => void
   expanded: boolean
+  tooltips: TooltipTexts
 }
 
 interface AlertLevel {
@@ -80,7 +81,7 @@ const getScoreZoneText = (score?: number) => {
   return '現在のスコアは「かなり低い水準」です。'
 }
 
-function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded }: Props) {
+function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded, tooltips }: Props) {
   const theme = useTheme()
   const alert = getAlert(scores?.total)
   const baseColor = alert.color
