@@ -1,8 +1,8 @@
 import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip, Divider } from '@mui/material'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import type { TooltipTexts } from '../tooltipTexts'
-import { ScoreBadge } from './ScoreBadge'
 import type { SimpleAlertLevel } from './UridokiKunAvatar'
+import TrafficLightIcon from '../assets/uridoki/traffic-light-uridoki-style.png'
 
 interface Props {
   scores?: {
@@ -109,7 +109,18 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
             </Typography>
           </Tooltip>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <ScoreBadge score={scores?.total} />
+            <Box
+              component="img"
+              src={TrafficLightIcon}
+              alt="信号機アイコン"
+              sx={{
+                width: { xs: 72, sm: 96, md: 110 },
+                height: 'auto',
+                objectFit: 'contain',
+                flexShrink: 0,
+                borderRadius: 2,
+              }}
+            />
             <Stack spacing={0.5}>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Typography variant="h3" component="span">
