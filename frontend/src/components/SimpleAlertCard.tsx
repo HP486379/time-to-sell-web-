@@ -1,8 +1,8 @@
 import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip, Divider } from '@mui/material'
-import { keyframes } from '@mui/system'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import type { TooltipTexts } from '../tooltipTexts'
-import { UridokiKunAvatar, type SimpleAlertLevel } from './UridokiKunAvatar'
+import { ScoreBadge } from './ScoreBadge'
+import type { SimpleAlertLevel } from './UridokiKunAvatar'
 
 interface Props {
   scores?: {
@@ -93,27 +93,6 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
     maximumFractionDigits: 0,
   })
 
-  const shake = keyframes`
-    0% { transform: translateX(0); }
-    20% { transform: translateX(-2px); }
-    40% { transform: translateX(2px); }
-    60% { transform: translateX(-1px); }
-    80% { transform: translateX(1px); }
-    100% { transform: translateX(0); }
-  `
-
-  const bounce = keyframes`
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-  `
-
-  const faceAnimation =
-    alert.level === 'strong-sell'
-      ? `${shake} 0.8s ease-in-out 0s 3`
-      : alert.level === 'buy'
-        ? `${bounce} 1.2s ease-in-out 0s 3`
-        : undefined
-
   return (
     <Card
       sx={{
@@ -130,18 +109,7 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
             </Typography>
           </Tooltip>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <Box
-              aria-hidden
-              sx={{
-                animation: faceAnimation,
-              }}
-            >
-              <UridokiKunAvatar
-                level={alert.level}
-                animated={!!faceAnimation}
-                label={`${alert.title}のビジュアル表示`}
-              />
-            </Box>
+            <ScoreBadge score={scores?.total} />
             <Stack spacing={0.5}>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Typography variant="h3" component="span">

@@ -1,5 +1,4 @@
 import React from 'react'
-import spriteImage from '../assets/uridoki-kun-sprite.png'
 
 export type SimpleAlertLevel = 'strong-sell' | 'sell' | 'hold' | 'buy'
 
@@ -33,16 +32,17 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   spriteUrl,
 }) => {
   const ariaLabel = label ?? levelLabels[level]
-  const resolvedUrl = spriteUrl ?? spriteImage
+  const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
+  const resolvedUrl = spriteUrl ?? (import.meta.env.VITE_URIDOKI_SPRITE as string | undefined) ?? '/uridoki-kun-sprite.png'
   return (
     <div
       className={`uridoki-kun-avatar uridoki-kun-${level}`}
       style={{
         width: size,
         height: size,
-        backgroundImage: `url(${resolvedUrl})`,
-        backgroundSize: '200% 200%',
-        backgroundPosition: positionMap[level],
+        backgroundImage: resolvedUrl ? `url(${resolvedUrl})` : fallback,
+        backgroundSize: resolvedUrl ? '200% 200%' : 'cover',
+        backgroundPosition: resolvedUrl ? positionMap[level] : 'center',
         backgroundRepeat: 'no-repeat',
         borderRadius: 16,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,

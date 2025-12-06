@@ -61,7 +61,7 @@ const defaultRequest: EvaluateRequest = {
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 type DisplayMode = 'pro' | 'simple'
-type ChartRange = '1d' | '1m' | '3m' | '1y'
+type ChartRange = '60m' | '1d' | '1m' | '3m' | '6m' | '1y' | '5y'
 
 const motionVariants = {
   initial: { opacity: 0, y: -10 },
@@ -260,10 +260,13 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               size="small"
               onChange={(_, val) => val && setChartRange(val)}
             >
+              <ToggleButton value="60m">60分</ToggleButton>
               <ToggleButton value="1d">1日</ToggleButton>
               <ToggleButton value="1m">1ヶ月</ToggleButton>
               <ToggleButton value="3m">3ヶ月</ToggleButton>
+              <ToggleButton value="6m">6ヶ月</ToggleButton>
               <ToggleButton value="1y">1年</ToggleButton>
+              <ToggleButton value="5y">5年</ToggleButton>
             </ToggleButtonGroup>
           </Box>
           <AnimatePresence mode="wait">
@@ -320,6 +323,9 @@ function filterPriceSeries(series: PricePoint[], range: ChartRange): PricePoint[
   let fromDate = lastDate.subtract(1, 'year')
 
   switch (range) {
+    case '60m':
+      fromDate = lastDate.subtract(60, 'minute')
+      break
     case '1d':
       fromDate = lastDate.subtract(1, 'day')
       break
@@ -328,6 +334,12 @@ function filterPriceSeries(series: PricePoint[], range: ChartRange): PricePoint[
       break
     case '3m':
       fromDate = lastDate.subtract(3, 'month')
+      break
+    case '6m':
+      fromDate = lastDate.subtract(6, 'month')
+      break
+    case '5y':
+      fromDate = lastDate.subtract(5, 'year')
       break
     case '1y':
     default:
