@@ -1,4 +1,5 @@
 import React from 'react'
+import defaultSprite from '../assets/uridoki-kun-sprite.png'
 
 export type SimpleAlertLevel = 'strong-sell' | 'sell' | 'hold' | 'buy'
 
@@ -34,7 +35,6 @@ export const UridokiKunAvatar: React.FC<Props> = ({
     const ariaLabel = label ?? levelLabels[level]
     const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
     const envSprite = (import.meta.env.VITE_URIDOKI_SPRITE as string | undefined) ?? undefined
-    const defaultSprite = '/uridoki-kun-sprite.png'
     const resolvedUrl = spriteUrl ?? envSprite ?? defaultSprite
   return (
     <div

@@ -2,6 +2,7 @@ import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Too
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import type { TooltipTexts } from '../tooltipTexts'
 import type { SimpleAlertLevel } from './UridokiKunAvatar'
+import trafficLightAsset from '../assets/traffic-light-uridoki-style.png'
 
 interface Props {
   scores?: {
@@ -92,8 +93,7 @@ const getScoreZoneText = (score?: number) => {
       maximumFractionDigits: 0,
     })
     const envTrafficLight = (import.meta.env.VITE_TRAFFIC_LIGHT_SPRITE as string | undefined) ?? undefined
-    const defaultTrafficLight = '/traffic-light-uridoki-style.png'
-    const trafficLightSrc = envTrafficLight ?? defaultTrafficLight
+    const trafficLightSrc = envTrafficLight ?? trafficLightAsset
 
   return (
     <Card

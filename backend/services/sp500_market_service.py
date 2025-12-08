@@ -23,7 +23,8 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_SYMBOL", "1306.T"),
             "NIKKEI": os.getenv("NIKKEI_SYMBOL", "^N225"),
             "NIFTY50": os.getenv("NIFTY50_SYMBOL", "^NSEI"),
-            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "0P00001I2M.T"),
+            # eMAXIS Slim 全世界株式(オール・カントリー)の投信コード（基準価額）
+            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "0331418A.T"),
         }
 
         self.nav_api_map = {
@@ -39,7 +40,8 @@ class SP500MarketService:
             "TOPIX": self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIKKEI": self._flag("NIKKEI_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
-            "ORUKAN": self._flag("ORUKAN_ALLOW_SYNTHETIC_FALLBACK", default=True),
+            # オルカンは誤ったシンボルでのフォールバックを避けるためデフォルトOFF
+            "ORUKAN": self._flag("ORUKAN_ALLOW_SYNTHETIC_FALLBACK", default=False),
         }
 
         self.start_prices = {
@@ -78,11 +80,43 @@ class SP500MarketService:
     def _resolve_symbol(self, index_type: str) -> str:
         return self.symbol_map.get(index_type, self.symbol_map["SP500"])
 
+    def _candidate_symbols(self, index_type: str) -> List[str]:
+        primary = self._resolve_symbol(index_type)
+        if index_type == "ORUKAN":
+            candidates = [
+                primary,
+                # 投信コードの別表記や Yahoo! の代替ティッカー候補
+                "0331418A.T",
+                "0331418A",
+                "emaxis-slim-all-country.jp",
+                "0P00001I2M.T",
+            ]
+            deduped = []
+            for c in candidates:
+                if c and c not in deduped:
+                    deduped.append(c)
+            return deduped
+        return [primary]
+
     def _resolve_nav_base(self, index_type: str) -> Optional[str]:
         return self.nav_api_map.get(index_type)
 
     def _allow_synthetic_for_index(self, index_type: str) -> bool:
         return self.allow_synth_map.get(index_type, True)
+
+    def _fetch_history_for_symbol(
+        self, symbol: str, *, start: Optional[date] = None, end: Optional[date] = None
+    ) -> List[Tuple[str, float]]:
+        if start and end:
+            hist = yf.download(symbol, start=start, end=end + timedelta(days=1), interval="1d")
+        else:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="1y", interval="1d")
+        hist = hist.dropna()
+        if hist.empty:
+            return []
+        closes = self._extract_close_series(hist)
+        return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
 
     def _fetch_nav_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
         """Optional custom NAV API (if provided by env) returning date/close pairs."""
@@ -171,14 +205,20 @@ class SP500MarketService:
             if nav_hist:
                 logger.info("Using NAV history for %s (%d pts)", index_type, len(nav_hist))
                 return [(d, round(v, 2)) for d, v in nav_hist]
-
-            ticker = yf.Ticker(self._resolve_symbol(index_type))
-            hist = ticker.history(period="1y", interval="1d")
-            if hist.empty:
-                raise ValueError("empty history")
-            closes = self._extract_close_series(hist)
-            logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
-            return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
+            for symbol in self._candidate_symbols(index_type):
+                try:
+                    series = self._fetch_history_for_symbol(symbol)
+                    if series:
+                        logger.info(
+                            "Using yfinance history for %s via %s (%d pts)",
+                            index_type,
+                            symbol,
+                            len(series),
+                        )
+                        return series
+                except Exception as sym_exc:  # pragma: no cover - logging only
+                    logger.warning("Failed symbol %s for %s: %s", symbol, index_type, sym_exc)
+            raise ValueError("empty history")
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
             if not allow_synth:
@@ -195,16 +235,20 @@ class SP500MarketService:
             if nav_hist:
                 logger.info("Using NAV history for %s (%d pts)", index_type, len(nav_hist))
                 return [(d, round(v, 2)) for d, v in nav_hist]
-
-            hist = yf.download(
-                self._resolve_symbol(index_type), start=start, end=end + timedelta(days=1), interval="1d"
-            )
-            hist = hist.dropna()
-            if hist.empty:
-                raise ValueError("empty history")
-            closes = self._extract_close_series(hist)
-            logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
-            return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
+            for symbol in self._candidate_symbols(index_type):
+                try:
+                    series = self._fetch_history_for_symbol(symbol, start=start, end=end)
+                    if series:
+                        logger.info(
+                            "Using yfinance history for %s via %s (%d pts)",
+                            index_type,
+                            symbol,
+                            len(series),
+                        )
+                        return series
+                except Exception as sym_exc:  # pragma: no cover - logging only
+                    logger.warning("Failed symbol %s for %s: %s", symbol, index_type, sym_exc)
+            raise ValueError("empty history")
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
             if not fallback_allowed:

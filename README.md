@@ -27,7 +27,7 @@
   - TOPIX: `.env` に `TOPIX_SYMBOL=1306.T`（TOPIX ETF）を指定（デフォルトも 1306.T）。
   - 日経225: `.env` に `NIKKEI_SYMBOL=^N225`（デフォルト）
   - NIFTY50: `.env` に `NIFTY50_SYMBOL=^NSEI`（デフォルト）
-  - オルカン: `.env` に `ORUKAN_SYMBOL=0P00001I2M.T`（eMAXIS Slim 全世界株式の基準価額ティッカー例）
+  - オルカン: `.env` に `ORUKAN_SYMBOL=0331418A.T`（eMAXIS Slim 全世界株式(オール・カントリー)の基準価額ティッカー例）
 - 実データ取得元
   - 株価・指数: yfinance（S&P500 / TOPIX / 日経225 / NIFTY50 / オルカン いずれも指定シンボルの終値を取得）
   - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用
@@ -58,7 +58,7 @@
   - `TOPIX_SYMBOL=1306.T`（任意の TOPIX 連動銘柄）
   - `NIKKEI_SYMBOL=^N225`
   - `NIFTY50_SYMBOL=^NSEI`
-  - `ORUKAN_SYMBOL=0P00001I2M.T`（オルカンの基準価額ティッカー例）
+- `ORUKAN_SYMBOL=0331418A.T`（オルカンの基準価額ティッカー例）
   - `FRED_API_KEY=<your_key>`（マクロ指標が実データになります）
   - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
   - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を追加設定
