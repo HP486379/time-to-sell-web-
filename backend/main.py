@@ -22,6 +22,7 @@ class IndexType(str, Enum):
     TOPIX = "TOPIX"
     NIKKEI = "NIKKEI"
     NIFTY50 = "NIFTY50"
+    ORUKAN = "ORUKAN"
 
 
 class PositionRequest(BaseModel):
@@ -210,6 +211,12 @@ def get_nikkei_price_history():
 @app.get("/api/nifty50/price-history", response_model=List[PricePoint])
 def get_nifty_price_history():
     snapshot = get_cached_snapshot(index_type=IndexType.NIFTY50)
+    return snapshot["price_series"]
+
+
+@app.get("/api/orukan/price-history", response_model=List[PricePoint])
+def get_orukan_price_history():
+    snapshot = get_cached_snapshot(index_type=IndexType.ORUKAN)
     return snapshot["price_series"]
 
 

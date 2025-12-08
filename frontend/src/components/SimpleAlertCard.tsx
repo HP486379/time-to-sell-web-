@@ -2,7 +2,6 @@ import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Too
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import type { TooltipTexts } from '../tooltipTexts'
 import type { SimpleAlertLevel } from './UridokiKunAvatar'
-import TrafficLightIcon from '../assets/uridoki/traffic-light-uridoki-style.png'
 
 interface Props {
   scores?: {
@@ -81,17 +80,20 @@ const getScoreZoneText = (score?: number) => {
   return '現在のスコアは「かなり低い水準」です。'
 }
 
-function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded, tooltips }: Props) {
-  const theme = useTheme()
-  const alert = getAlert(scores?.total)
-  const baseColor = alert.color
-  const costBasis = marketValue !== undefined && pnl !== undefined ? marketValue - pnl : undefined
+  function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded, tooltips }: Props) {
+    const theme = useTheme()
+    const alert = getAlert(scores?.total)
+    const baseColor = alert.color
+    const costBasis = marketValue !== undefined && pnl !== undefined ? marketValue - pnl : undefined
   const pnlPct = costBasis && costBasis !== 0 ? (pnl! / costBasis) * 100 : null
-  const jpyFormatter = new Intl.NumberFormat('ja-JP', {
-    style: 'currency',
-    currency: 'JPY',
-    maximumFractionDigits: 0,
-  })
+    const jpyFormatter = new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+      maximumFractionDigits: 0,
+    })
+    const envTrafficLight = (import.meta.env.VITE_TRAFFIC_LIGHT_SPRITE as string | undefined) ?? undefined
+    const defaultTrafficLight = '/traffic-light-uridoki-style.png'
+    const trafficLightSrc = envTrafficLight ?? defaultTrafficLight
 
   return (
     <Card
@@ -109,12 +111,12 @@ function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, 
             </Typography>
           </Tooltip>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <Box
-              component="img"
-              src={TrafficLightIcon}
-              alt="信号機アイコン"
-              sx={{
-                width: { xs: 72, sm: 96, md: 110 },
+              <Box
+                component="img"
+                src={trafficLightSrc}
+                alt="信号機アイコン"
+                sx={{
+                  width: { xs: 72, sm: 96, md: 110 },
                 height: 'auto',
                 objectFit: 'contain',
                 flexShrink: 0,

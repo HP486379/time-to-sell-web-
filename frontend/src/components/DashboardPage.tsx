@@ -108,6 +108,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
       TOPIX: '/api/topix/price-history',
       NIKKEI: '/api/nikkei/price-history',
       NIFTY50: '/api/nifty50/price-history',
+      ORUKAN: '/api/orukan/price-history',
     }
     return map[targetIndex]
   }

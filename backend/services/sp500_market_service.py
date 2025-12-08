@@ -23,6 +23,7 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_SYMBOL", "1306.T"),
             "NIKKEI": os.getenv("NIKKEI_SYMBOL", "^N225"),
             "NIFTY50": os.getenv("NIFTY50_SYMBOL", "^NSEI"),
+            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "0P00001I2M.T"),
         }
 
         self.nav_api_map = {
@@ -30,6 +31,7 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_NAV_API_BASE"),
             "NIKKEI": os.getenv("NIKKEI_NAV_API_BASE"),
             "NIFTY50": os.getenv("NIFTY50_NAV_API_BASE"),
+            "ORUKAN": os.getenv("ORUKAN_NAV_API_BASE"),
         }
 
         self.allow_synth_map = {
@@ -37,9 +39,16 @@ class SP500MarketService:
             "TOPIX": self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIKKEI": self._flag("NIKKEI_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
+            "ORUKAN": self._flag("ORUKAN_ALLOW_SYNTHETIC_FALLBACK", default=True),
         }
 
-        self.start_prices = {"SP500": 4000.0, "TOPIX": 1500.0, "NIKKEI": 15000.0, "NIFTY50": 4000.0}
+        self.start_prices = {
+            "SP500": 4000.0,
+            "TOPIX": 1500.0,
+            "NIKKEI": 15000.0,
+            "NIFTY50": 4000.0,
+            "ORUKAN": 15000.0,
+        }
 
         logger.info(
             "[MARKET CONFIG] symbols=%s fallback=%s",
@@ -112,7 +121,13 @@ class SP500MarketService:
         * 週末はスキップし、営業日ベースで積み上げる
         """
 
-        annual_drift_map = {"SP500": 0.07, "TOPIX": 0.04, "NIKKEI": 0.05, "NIFTY50": 0.08}
+        annual_drift_map = {
+            "SP500": 0.07,
+            "TOPIX": 0.04,
+            "NIKKEI": 0.05,
+            "NIFTY50": 0.08,
+            "ORUKAN": 0.06,
+        }
         annual_drift = annual_drift_map.get(index_type, 0.05)
         daily_drift = annual_drift / 260.0
 
