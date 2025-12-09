@@ -23,8 +23,8 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_SYMBOL", "1306.T"),
             "NIKKEI": os.getenv("NIKKEI_SYMBOL", "^N225"),
             "NIFTY50": os.getenv("NIFTY50_SYMBOL", "^NSEI"),
-            # Yahoo! Finance の eMAXIS Slim 全世界株式は ".T" 付きが正規コード
-            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "0331418A.T"),
+            # オルカンは MSCI ACWI 連動 ETF（ACWI）をプロキシとして利用する
+            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "ACWI"),
         }
 
         self.price_type_map = {
@@ -32,7 +32,7 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_PRICE_TYPE", "close"),
             "NIKKEI": os.getenv("NIKKEI_PRICE_TYPE", "close"),
             "NIFTY50": os.getenv("NIFTY50_PRICE_TYPE", "close"),
-            "ORUKAN": os.getenv("ORUKAN_PRICE_TYPE", "nav"),
+            "ORUKAN": "close",
         }
 
         self.nav_api_map = {
@@ -40,7 +40,6 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_NAV_API_BASE"),
             "NIKKEI": os.getenv("NIKKEI_NAV_API_BASE"),
             "NIFTY50": os.getenv("NIFTY50_NAV_API_BASE"),
-            "ORUKAN": os.getenv("ORUKAN_NAV_API_BASE"),
         }
 
         self.allow_synth_map = {
@@ -48,8 +47,7 @@ class SP500MarketService:
             "TOPIX": self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIKKEI": self._flag("NIKKEI_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
-            # オルカンは NAV の乖離が致命的になるためデフォルトでシンセ無効
-            "ORUKAN": self._flag("ORUKAN_ALLOW_SYNTHETIC_FALLBACK", default=False),
+            "ORUKAN": True,
         }
 
         self.start_prices = {
