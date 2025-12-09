@@ -27,9 +27,10 @@
   - TOPIX: `.env` に `TOPIX_SYMBOL=1306.T`（TOPIX ETF）を指定（デフォルトも 1306.T）。
   - 日経225: `.env` に `NIKKEI_SYMBOL=^N225`（デフォルト）
   - NIFTY50: `.env` に `NIFTY50_SYMBOL=^NSEI`（デフォルト）
-  - オルカン: `.env` に `ORUKAN_SYMBOL=ACWI`（MSCI ACWI 連動 ETF をプロキシとして使用）
+  - オルカン（USD建て）: `.env` に `ORUKAN_SYMBOL=ACWI`（MSCI ACWI 連動 ETF をプロキシとして使用）
+  - オルカン（円建て）: `.env` に `ORUKAN_JPY_SYMBOL=ACWI` と `ORUKAN_JPY_FX_SYMBOL=JPY=X`（USD/JPY 終値で円換算）
 - 実データ取得元
-  - 株価・指数: yfinance（S&P500 / TOPIX / 日経225 / NIFTY50 / オルカン いずれも指定シンボルの終値を取得）
+  - 株価・指数: yfinance（S&P500 / TOPIX / 日経225 / NIFTY50 / オルカン の終値を取得。オルカン円建ては ACWI × USD/JPY で計算）
   - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用
   - マクロ指標: FRED (`FRED_API_KEY` がある場合) → 無い場合は yfinance の代替 → それでも取得できなければ決定的なダミー値
 - バックテストのフォールバック制御（疑似データを許可する場合）
@@ -42,7 +43,7 @@
   - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
 - シンプルバックテスト（閾値売買）:
 - `POST /api/backtest` に `{ "start_date": "2004-01-01", "end_date": "2024-12-31", "initial_cash": 1000000, "buy_threshold": 40, "sell_threshold": 80, "index_type": "SP500" }` のように渡すと、
-    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します（`index_type` は `SP500` / `TOPIX` / `NIKKEI` / `NIFTY50` / `ORUKAN`）。
+    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します（`index_type` は `SP500` / `TOPIX` / `NIKKEI` / `NIFTY50` / `ORUKAN` / `orukan_jpy`）。
 
 #### 環境設定の例
 - ローカル検証（疑似データのみで完結させたい場合）
@@ -58,6 +59,7 @@
   - `NIKKEI_SYMBOL=^N225`
   - `NIFTY50_SYMBOL=^NSEI`
   - `ORUKAN_SYMBOL=ACWI`（オルカンは ACWI の値動きを利用）
+  - `ORUKAN_JPY_SYMBOL=ACWI` / `ORUKAN_JPY_FX_SYMBOL=JPY=X`（オルカン円建ては ACWI をドル円で換算）
   - `FRED_API_KEY=<your_key>`（マクロ指標が実データになります）
   - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
   - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` を追加設定

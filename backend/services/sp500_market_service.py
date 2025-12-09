@@ -25,14 +25,21 @@ class SP500MarketService:
             "NIFTY50": os.getenv("NIFTY50_SYMBOL", "^NSEI"),
             # オルカンは MSCI ACWI 連動 ETF（ACWI）をプロキシとして利用する
             "ORUKAN": os.getenv("ORUKAN_SYMBOL", "ACWI"),
+            # オルカン円建ては ACWI × USD/JPY を用いる
+            "orukan_jpy": os.getenv("ORUKAN_JPY_SYMBOL", os.getenv("ORUKAN_SYMBOL", "ACWI")),
+        }
+
+        self.fx_symbol_map = {
+            "orukan_jpy": os.getenv("ORUKAN_JPY_FX_SYMBOL", "JPY=X"),
         }
 
         self.price_type_map = {
-            "SP500": os.getenv("SP500_PRICE_TYPE", "close"),
-            "TOPIX": os.getenv("TOPIX_PRICE_TYPE", "close"),
-            "NIKKEI": os.getenv("NIKKEI_PRICE_TYPE", "close"),
-            "NIFTY50": os.getenv("NIFTY50_PRICE_TYPE", "close"),
-            "ORUKAN": "close",
+            "SP500": os.getenv("SP500_PRICE_TYPE", "index"),
+            "TOPIX": os.getenv("TOPIX_PRICE_TYPE", "index"),
+            "NIKKEI": os.getenv("NIKKEI_PRICE_TYPE", "index"),
+            "NIFTY50": os.getenv("NIFTY50_PRICE_TYPE", "index"),
+            "ORUKAN": "index",
+            "orukan_jpy": "index_jpy",
         }
 
         self.nav_api_map = {
@@ -48,6 +55,7 @@ class SP500MarketService:
             "NIKKEI": self._flag("NIKKEI_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "ORUKAN": True,
+            "orukan_jpy": True,
         }
 
         self.start_prices = {
@@ -56,11 +64,13 @@ class SP500MarketService:
             "NIKKEI": 15000.0,
             "NIFTY50": 4000.0,
             "ORUKAN": 15000.0,
+            "orukan_jpy": 15000.0,
         }
 
         logger.info(
-            "[MARKET CONFIG] symbols=%s fallback=%s price_types=%s",
+            "[MARKET CONFIG] symbols=%s fx_symbols=%s fallback=%s price_types=%s",
             self.symbol_map,
+            self.fx_symbol_map,
             self.allow_synth_map,
             self.price_type_map,
         )
@@ -87,6 +97,9 @@ class SP500MarketService:
     def _resolve_symbol(self, index_type: str) -> str:
         return self.symbol_map.get(index_type, self.symbol_map["SP500"])
 
+    def _resolve_fx_symbol(self, index_type: str) -> Optional[str]:
+        return self.fx_symbol_map.get(index_type)
+
     def _resolve_nav_base(self, index_type: str) -> Optional[str]:
         return self.nav_api_map.get(index_type)
 
@@ -95,6 +108,39 @@ class SP500MarketService:
 
     def _resolve_price_type(self, index_type: str) -> Optional[str]:
         return self.price_type_map.get(index_type)
+
+    def _download_close_series(self, symbol: str, start: date, end: date) -> pd.Series:
+        hist = yf.download(symbol, start=start, end=end + timedelta(days=1), interval="1d")
+        hist = hist.dropna()
+        closes = self._extract_close_series(hist)
+        if closes.empty:
+            raise ValueError(f"empty history for {symbol}")
+        return closes
+
+    def _fetch_index_history_jpy(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
+        symbol = self._resolve_symbol(index_type)
+        fx_symbol = self._resolve_fx_symbol(index_type)
+        if not fx_symbol:
+            raise ValueError("fx_symbol required for index_jpy")
+
+        idx_close = self._download_close_series(symbol, start, end).rename("close_usd")
+        fx_close = self._download_close_series(fx_symbol, start, end).rename("usdjpy")
+
+        combined = pd.concat([idx_close, fx_close], axis=1, join="inner").dropna()
+        if combined.empty:
+            raise ValueError("no overlapping dates for index and fx")
+
+        combined["close"] = combined["close_usd"] * combined["usdjpy"]
+        series = [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in combined["close"].items()]
+        logger.info(
+            "Using yfinance history for %s (symbol=%s fx_symbol=%s price_type=%s points=%d)",
+            index_type,
+            symbol,
+            fx_symbol,
+            self._resolve_price_type(index_type),
+            len(series),
+        )
+        return series
 
     def _fetch_nav_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
         """Optional custom NAV API (if provided by env) returning date/close pairs."""
@@ -151,6 +197,7 @@ class SP500MarketService:
             "NIKKEI": 0.05,
             "NIFTY50": 0.08,
             "ORUKAN": 0.06,
+            "orukan_jpy": 0.06,
         }
         annual_drift = annual_drift_map.get(index_type, 0.05)
         daily_drift = annual_drift / 260.0
@@ -191,13 +238,17 @@ class SP500MarketService:
         start = today - timedelta(days=365)
         allow_synth = self._allow_synthetic_for_index(index_type)
         try:
+            price_type = self._resolve_price_type(index_type)
+            if price_type == "index_jpy":
+                return self._fetch_index_history_jpy(start, today, index_type)
+
             nav_hist = self._fetch_nav_history(start, today, index_type)
             if nav_hist:
                 logger.info(
                     "Using NAV history for %s (symbol=%s price_type=%s points=%d)",
                     index_type,
                     self._resolve_symbol(index_type),
-                    self._resolve_price_type(index_type),
+                    price_type,
                     len(nav_hist),
                 )
                 return [(d, round(v, 2)) for d, v in nav_hist]
@@ -212,7 +263,7 @@ class SP500MarketService:
                 "Using yfinance history for %s (symbol=%s price_type=%s points=%d)",
                 index_type,
                 symbol,
-                self._resolve_price_type(index_type),
+                price_type,
                 len(closes),
             )
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
@@ -236,13 +287,17 @@ class SP500MarketService:
         allow_synth = self._allow_synthetic_for_index(index_type)
         fallback_allowed = allow_fallback and allow_synth
         try:
+            price_type = self._resolve_price_type(index_type)
+            if price_type == "index_jpy":
+                return self._fetch_index_history_jpy(start, end, index_type)
+
             nav_hist = self._fetch_nav_history(start, end, index_type)
             if nav_hist:
                 logger.info(
                     "Using NAV history for %s (symbol=%s price_type=%s points=%d)",
                     index_type,
                     self._resolve_symbol(index_type),
-                    self._resolve_price_type(index_type),
+                    price_type,
                     len(nav_hist),
                 )
                 return [(d, round(v, 2)) for d, v in nav_hist]
@@ -257,7 +312,7 @@ class SP500MarketService:
                 "Using yfinance history for %s (symbol=%s price_type=%s points=%d)",
                 index_type,
                 symbol,
-                self._resolve_price_type(index_type),
+                price_type,
                 len(closes),
             )
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
@@ -307,14 +362,30 @@ class SP500MarketService:
     def get_current_price(
         self, history: Optional[List[Tuple[str, float]]] = None, index_type: str = "SP500"
     ) -> float:
+        price_type = self._resolve_price_type(index_type)
         try:
-            ticker = yf.Ticker(self._resolve_symbol(index_type))
-            live = ticker.fast_info.get("lastPrice") if ticker.fast_info else None
-            if live:
-                return round(float(live), 2)
-            hist = ticker.history(period="5d", interval="1d")
-            if not hist.empty:
-                return round(float(hist["Close"].iloc[-1]), 2)
+            if price_type == "index_jpy":
+                symbol = self._resolve_symbol(index_type)
+                fx_symbol = self._resolve_fx_symbol(index_type)
+                ticker = yf.Ticker(symbol)
+                fx_ticker = yf.Ticker(fx_symbol) if fx_symbol else None
+                live = ticker.fast_info.get("lastPrice") if ticker.fast_info else None
+                fx_live = fx_ticker.fast_info.get("lastPrice") if fx_ticker and fx_ticker.fast_info else None
+                if live and fx_live:
+                    return round(float(live) * float(fx_live), 2)
+
+                hist = ticker.history(period="5d", interval="1d")
+                fx_hist = fx_ticker.history(period="5d", interval="1d") if fx_ticker else None
+                if not hist.empty and fx_hist is not None and not fx_hist.empty:
+                    return round(float(hist["Close"].iloc[-1]) * float(fx_hist["Close"].iloc[-1]), 2)
+            else:
+                ticker = yf.Ticker(self._resolve_symbol(index_type))
+                live = ticker.fast_info.get("lastPrice") if ticker.fast_info else None
+                if live:
+                    return round(float(live), 2)
+                hist = ticker.history(period="5d", interval="1d")
+                if not hist.empty:
+                    return round(float(hist["Close"].iloc[-1]), 2)
         except Exception:
             pass
 
