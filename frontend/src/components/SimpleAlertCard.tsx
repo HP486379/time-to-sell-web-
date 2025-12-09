@@ -92,7 +92,7 @@ const getScoreZoneText = (score?: number) => {
       maximumFractionDigits: 0,
     })
     const envTrafficLight = (import.meta.env.VITE_TRAFFIC_LIGHT_SPRITE as string | undefined) ?? undefined
-    const defaultTrafficLight = '/traffic-light-uridoki-style.png'
+    const defaultTrafficLight = '/assets/traffic-light-uridoki-style.png'
     const trafficLightSrc = envTrafficLight ?? defaultTrafficLight
 
   return (
