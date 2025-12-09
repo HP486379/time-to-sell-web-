@@ -27,15 +27,15 @@
   - TOPIX: `.env` に `TOPIX_SYMBOL=1306.T`（TOPIX ETF）を指定（デフォルトも 1306.T）。
   - 日経225: `.env` に `NIKKEI_SYMBOL=^N225`（デフォルト）
   - NIFTY50: `.env` に `NIFTY50_SYMBOL=^NSEI`（デフォルト）
-  - オルカン: `.env` に `ORUKAN_SYMBOL=0P00001I2M.T`（eMAXIS Slim 全世界株式の基準価額ティッカー例）
+  - オルカン: `.env` に `ORUKAN_SYMBOL=0331418A.T`（eMAXIS Slim 全世界株式の Yahoo! Finance コード）
 - 実データ取得元
   - 株価・指数: yfinance（S&P500 / TOPIX / 日経225 / NIFTY50 / オルカン いずれも指定シンボルの終値を取得）
-  - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用
+  - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用（オルカンは `price_type=nav` をデフォルト送信）
   - マクロ指標: FRED (`FRED_API_KEY` がある場合) → 無い場合は yfinance の代替 → それでも取得できなければ決定的なダミー値
 - バックテストのフォールバック制御（疑似データを許可する場合）
   - 取得失敗時に決定的な疑似系列へ切り替えるには、真偽値として解釈される値（`1` / `true` / `yes` / `on`）をセットしてください。
     - `BACKTEST_ALLOW_FALLBACK=1`（バックテスト時にフォールバックを許可するか）
-    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（指数ごとに疑似価格履歴を許可するか）
+    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（指数ごとに疑似価格履歴を許可するか。オルカンはデフォルト無効）
   - いずれかが 0/false の場合はその指数でフォールバックせず、外部データ取得に失敗すると 502 を返します。メッセージ: `external data unavailable (check network / API key / symbol)`
 - 基準価額（円）の取得:
   - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
@@ -58,9 +58,9 @@
   - `TOPIX_SYMBOL=1306.T`（任意の TOPIX 連動銘柄）
   - `NIKKEI_SYMBOL=^N225`
   - `NIFTY50_SYMBOL=^NSEI`
-  - `ORUKAN_SYMBOL=0P00001I2M.T`（オルカンの基準価額ティッカー例）
+    - `ORUKAN_SYMBOL=0331418A.T`（オルカンの Yahoo! Finance コード）
   - `FRED_API_KEY=<your_key>`（マクロ指標が実データになります）
-  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
+  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替。オルカンは未設定時 false）
   - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を追加設定
 
 バックエンド起動時には、マーケットサービスとバックテストの各フォールバック設定がログに出力されます（例: `[MARKET CONFIG] ...`, `[BACKTEST CONFIG] ...`）。外部データ経路が使われたかどうかも INFO ログで確認できます。
