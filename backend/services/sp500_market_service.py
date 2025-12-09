@@ -23,7 +23,16 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_SYMBOL", "1306.T"),
             "NIKKEI": os.getenv("NIKKEI_SYMBOL", "^N225"),
             "NIFTY50": os.getenv("NIFTY50_SYMBOL", "^NSEI"),
-            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "0P00001I2M.T"),
+            # オルカンは MSCI ACWI 連動 ETF（ACWI）をプロキシとして利用する
+            "ORUKAN": os.getenv("ORUKAN_SYMBOL", "ACWI"),
+        }
+
+        self.price_type_map = {
+            "SP500": os.getenv("SP500_PRICE_TYPE", "close"),
+            "TOPIX": os.getenv("TOPIX_PRICE_TYPE", "close"),
+            "NIKKEI": os.getenv("NIKKEI_PRICE_TYPE", "close"),
+            "NIFTY50": os.getenv("NIFTY50_PRICE_TYPE", "close"),
+            "ORUKAN": "close",
         }
 
         self.nav_api_map = {
@@ -31,7 +40,6 @@ class SP500MarketService:
             "TOPIX": os.getenv("TOPIX_NAV_API_BASE"),
             "NIKKEI": os.getenv("NIKKEI_NAV_API_BASE"),
             "NIFTY50": os.getenv("NIFTY50_NAV_API_BASE"),
-            "ORUKAN": os.getenv("ORUKAN_NAV_API_BASE"),
         }
 
         self.allow_synth_map = {
@@ -39,7 +47,7 @@ class SP500MarketService:
             "TOPIX": self._flag("TOPIX_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIKKEI": self._flag("NIKKEI_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
-            "ORUKAN": self._flag("ORUKAN_ALLOW_SYNTHETIC_FALLBACK", default=True),
+            "ORUKAN": True,
         }
 
         self.start_prices = {
@@ -51,9 +59,10 @@ class SP500MarketService:
         }
 
         logger.info(
-            "[MARKET CONFIG] symbols=%s fallback=%s",
+            "[MARKET CONFIG] symbols=%s fallback=%s price_types=%s",
             self.symbol_map,
             self.allow_synth_map,
+            self.price_type_map,
         )
 
     def _extract_close_series(self, hist: pd.DataFrame) -> pd.Series:
@@ -84,6 +93,9 @@ class SP500MarketService:
     def _allow_synthetic_for_index(self, index_type: str) -> bool:
         return self.allow_synth_map.get(index_type, True)
 
+    def _resolve_price_type(self, index_type: str) -> Optional[str]:
+        return self.price_type_map.get(index_type)
+
     def _fetch_nav_history(self, start: date, end: date, index_type: str) -> List[Tuple[str, float]]:
         """Optional custom NAV API (if provided by env) returning date/close pairs."""
 
@@ -91,24 +103,36 @@ class SP500MarketService:
         if not nav_base:
             return []
 
+        symbol = self._resolve_symbol(index_type)
+        price_type = self._resolve_price_type(index_type)
+
         try:
             resp = requests.get(
                 f"{nav_base.rstrip('/')}/history",
                 params={
-                    "symbol": self._resolve_symbol(index_type),
+                    "symbol": symbol,
                     "start": start.isoformat(),
                     "end": end.isoformat(),
+                    "price_type": price_type,
                 },
                 timeout=10,
             )
             resp.raise_for_status()
             data = resp.json()
             if isinstance(data, list) and data:
-                return [
+                series = [
                     (str(item["date"]), float(item["close"]))
                     for item in data
                     if "date" in item and "close" in item
                 ]
+                logger.info(
+                    "[NAV API] index=%s symbol=%s price_type=%s points=%d",
+                    index_type,
+                    symbol,
+                    price_type,
+                    len(series),
+                )
+                return series
         except Exception as exc:
             logger.warning("NAV API fallback due to error: %s", exc)
         return []
@@ -169,21 +193,42 @@ class SP500MarketService:
         try:
             nav_hist = self._fetch_nav_history(start, today, index_type)
             if nav_hist:
-                logger.info("Using NAV history for %s (%d pts)", index_type, len(nav_hist))
+                logger.info(
+                    "Using NAV history for %s (symbol=%s price_type=%s points=%d)",
+                    index_type,
+                    self._resolve_symbol(index_type),
+                    self._resolve_price_type(index_type),
+                    len(nav_hist),
+                )
                 return [(d, round(v, 2)) for d, v in nav_hist]
 
-            ticker = yf.Ticker(self._resolve_symbol(index_type))
+            symbol = self._resolve_symbol(index_type)
+            ticker = yf.Ticker(symbol)
             hist = ticker.history(period="1y", interval="1d")
             if hist.empty:
                 raise ValueError("empty history")
             closes = self._extract_close_series(hist)
-            logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
+            logger.info(
+                "Using yfinance history for %s (symbol=%s price_type=%s points=%d)",
+                index_type,
+                symbol,
+                self._resolve_price_type(index_type),
+                len(closes),
+            )
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
             if not allow_synth:
                 raise
-            return self._fallback_history(start, today, index_type)
+            fallback = self._fallback_history(start, today, index_type)
+            logger.info(
+                "Using synthetic history for %s (symbol=%s price_type=%s points=%d)",
+                index_type,
+                self._resolve_symbol(index_type),
+                self._resolve_price_type(index_type),
+                len(fallback),
+            )
+            return fallback
 
     def get_price_history_range(
         self, start: date, end: date, allow_fallback: bool = True, index_type: str = "SP500"
@@ -193,23 +238,42 @@ class SP500MarketService:
         try:
             nav_hist = self._fetch_nav_history(start, end, index_type)
             if nav_hist:
-                logger.info("Using NAV history for %s (%d pts)", index_type, len(nav_hist))
+                logger.info(
+                    "Using NAV history for %s (symbol=%s price_type=%s points=%d)",
+                    index_type,
+                    self._resolve_symbol(index_type),
+                    self._resolve_price_type(index_type),
+                    len(nav_hist),
+                )
                 return [(d, round(v, 2)) for d, v in nav_hist]
 
-            hist = yf.download(
-                self._resolve_symbol(index_type), start=start, end=end + timedelta(days=1), interval="1d"
-            )
+            symbol = self._resolve_symbol(index_type)
+            hist = yf.download(symbol, start=start, end=end + timedelta(days=1), interval="1d")
             hist = hist.dropna()
             if hist.empty:
                 raise ValueError("empty history")
             closes = self._extract_close_series(hist)
-            logger.info("Using yfinance history for %s (%d pts)", index_type, len(closes))
+            logger.info(
+                "Using yfinance history for %s (symbol=%s price_type=%s points=%d)",
+                index_type,
+                symbol,
+                self._resolve_price_type(index_type),
+                len(closes),
+            )
             return [(self._to_iso_date(idx), round(float(val), 2)) for idx, val in closes.items()]
         except Exception as exc:
             logger.warning("Price history fetch failed (%s)", exc, exc_info=True)
             if not fallback_allowed:
                 raise
-            return self._fallback_history(start, end, index_type)
+            fallback = self._fallback_history(start, end, index_type)
+            logger.info(
+                "Using synthetic history for %s (symbol=%s price_type=%s points=%d)",
+                index_type,
+                self._resolve_symbol(index_type),
+                self._resolve_price_type(index_type),
+                len(fallback),
+            )
+            return fallback
 
     def get_usd_jpy(self) -> float:
         try:
