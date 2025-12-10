@@ -235,7 +235,7 @@ class SP500MarketService:
 
     def get_price_history(self, index_type: str = "SP500") -> List[Tuple[str, float]]:
         today = date.today()
-        start = today - timedelta(days=365)
+        start = today - timedelta(days=365 * 5)
         allow_synth = self._allow_synthetic_for_index(index_type)
         try:
             price_type = self._resolve_price_type(index_type)
@@ -254,11 +254,7 @@ class SP500MarketService:
                 return [(d, round(v, 2)) for d, v in nav_hist]
 
             symbol = self._resolve_symbol(index_type)
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period="1y", interval="1d")
-            if hist.empty:
-                raise ValueError("empty history")
-            closes = self._extract_close_series(hist)
+            closes = self._download_close_series(symbol, start, today)
             logger.info(
                 "Using yfinance history for %s (symbol=%s price_type=%s points=%d)",
                 index_type,
