@@ -1,4 +1,4 @@
-export type IndexType = 'SP500' | 'TOPIX' | 'NIKKEI' | 'NIFTY50' | 'ORUKAN'
+export type IndexType = 'SP500' | 'TOPIX' | 'NIKKEI' | 'NIFTY50' | 'ORUKAN' | 'orukan_jpy'
 
 export const INDEX_LABELS: Record<IndexType, string> = {
   SP500: 'S&P500',
@@ -6,6 +6,7 @@ export const INDEX_LABELS: Record<IndexType, string> = {
   NIKKEI: '日経225',
   NIFTY50: 'NIFTY50（インド）',
   ORUKAN: 'オルカン（全世界株式）',
+  orukan_jpy: 'オルカン（全世界株式・円建て）',
 }
 
 export const PRICE_TITLE_MAP: Record<IndexType, string> = {
@@ -14,4 +15,5 @@ export const PRICE_TITLE_MAP: Record<IndexType, string> = {
   NIKKEI: '日経225 価格トレンド',
   NIFTY50: 'NIFTY50（インド株）価格トレンド',
   ORUKAN: 'オルカン（全世界株式）価格トレンド',
+  orukan_jpy: 'オルカン（全世界株式・円建て）価格トレンド',
 }
