@@ -61,6 +61,7 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 type DisplayMode = 'pro' | 'simple'
 type StartOption = '1m' | '3m' | '6m' | '1y' | '3y' | '5y' | 'max' | 'custom'
+type PriceDisplayMode = 'normalized' | 'actual'
 
 const motionVariants = {
   initial: { opacity: 0, y: -10 },
@@ -85,6 +86,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [showDetails, setShowDetails] = useState(false)
   const [startOption, setStartOption] = useState<StartOption>('max')
   const [customStart, setCustomStart] = useState('')
+  const [priceDisplayMode, setPriceDisplayMode] = useState<PriceDisplayMode>('normalized')
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
   const [priceSeriesMap, setPriceSeriesMap] = useState<Partial<Record<IndexType, PricePoint[]>>>({})
 
@@ -178,10 +180,14 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     return lastUpdated.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
   }, [lastUpdated])
 
-  const normalizedSeries = useMemo(
-    () => normalizePriceSeries(priceSeries, startOption, customStart),
+  const filteredSeries = useMemo(
+    () => filterPriceSeries(priceSeries, startOption, customStart),
     [priceSeries, startOption, customStart],
   )
+
+  const normalizedSeries = useMemo(() => normalizePriceSeries(filteredSeries), [filteredSeries])
+
+  const displaySeries = priceDisplayMode === 'normalized' ? normalizedSeries : filteredSeries
 
   const highlights = useMemo(() => buildHighlights(response), [response])
 
@@ -304,6 +310,18 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             </Stack>
           )}
           <Box display="flex" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel id="price-display-mode-label">表示モード</InputLabel>
+              <Select
+                labelId="price-display-mode-label"
+                value={priceDisplayMode}
+                label="表示モード"
+                onChange={(e) => setPriceDisplayMode(e.target.value as PriceDisplayMode)}
+              >
+                <MenuItem value="normalized">正規化</MenuItem>
+                <MenuItem value="actual">実価格</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel id="start-select-label">開始時点</InputLabel>
               <Select
@@ -334,13 +352,13 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </Box>
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${startOption}-${customStart}-${displayMode}`}
+              key={`${startOption}-${customStart}-${displayMode}-${priceDisplayMode}`}
               variants={chartMotion}
               initial="initial"
               animate="animate"
               exit="exit"
             >
-              <PriceChart priceSeries={normalizedSeries} simple={displayMode === 'simple'} tooltips={tooltipTexts} />
+              <PriceChart priceSeries={displaySeries} simple={displayMode === 'simple'} tooltips={tooltipTexts} />
             </motion.div>
           </AnimatePresence>
         </CardContent>
@@ -402,24 +420,26 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   )
 }
 
-function normalizePriceSeries(series: PricePoint[], startOption: StartOption, customStart: string): PricePoint[] {
+function filterPriceSeries(series: PricePoint[], startOption: StartOption, customStart: string): PricePoint[] {
   if (!series.length) return []
 
   const startDate = resolveStartDate(series, startOption, customStart)
-  const filtered = startDate
+  return startDate
     ? series.filter((p) => {
         const current = dayjs(p.date)
         return current.isAfter(startDate) || current.isSame(startDate, 'day')
       })
     : series
+}
 
-  if (!filtered.length) return []
+function normalizePriceSeries(series: PricePoint[]): PricePoint[] {
+  if (!series.length) return []
 
-  const basePrice = filtered[0].close
-  if (basePrice === 0) return filtered
+  const basePrice = series[0].close
+  if (basePrice === 0) return series
   const factor = 100 / basePrice
 
-  return filtered.map((p) => ({
+  return series.map((p) => ({
     ...p,
     close: roundToTwo(p.close * factor),
     ma20: p.ma20 !== null ? roundToTwo(p.ma20 * factor) : null,
@@ -434,17 +454,17 @@ function resolveStartDate(series: PricePoint[], startOption: StartOption, custom
 
   switch (startOption) {
     case '1m':
-      return lastDate.subtract(1, 'month')
+      return lastDate.subtract(30, 'day')
     case '3m':
-      return lastDate.subtract(3, 'month')
+      return lastDate.subtract(90, 'day')
     case '6m':
-      return lastDate.subtract(6, 'month')
+      return lastDate.subtract(180, 'day')
     case '1y':
-      return lastDate.subtract(1, 'year')
+      return lastDate.subtract(365, 'day')
     case '3y':
-      return lastDate.subtract(3, 'year')
+      return lastDate.subtract(3 * 365, 'day')
     case '5y':
-      return lastDate.subtract(5, 'year')
+      return lastDate.subtract(5 * 365, 'day')
     case 'custom': {
       const parsed = dayjs(customStart)
       if (parsed.isValid()) return parsed
@@ -471,7 +491,7 @@ function buildReturnLabels(indexType: IndexType, priceSeriesMap: Partial<Record<
 
   const baseSeries = indexType === 'ORUKAN' ? usdSeries : priceSeriesMap[indexType]
   const ret = calculateTotalReturn(baseSeries ?? [])
-  if (ret !== null) labels.push(`ドル建て  ：5年トータル ${formatPercentage(ret)}`)
+  if (ret !== null) labels.push(`${getCurrencyLabel(indexType)} ：5年トータル ${formatPercentage(ret)}`)
   return labels
 }
 
@@ -488,6 +508,11 @@ function calculateTotalReturn(series: PricePoint[], years = 5): number | null {
 function formatPercentage(value: number): string {
   const sign = value > 0 ? '+' : ''
   return `${sign}${value.toFixed(1)}%`
+}
+
+function getCurrencyLabel(indexType: IndexType): 'ドル建て' | '円建て' {
+  if (indexType === 'TOPIX' || indexType === 'NIKKEI') return '円建て'
+  return 'ドル建て'
 }
 
 function buildForexInsight(
