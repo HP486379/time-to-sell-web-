@@ -11,8 +11,6 @@ import {
   IconButton,
   Collapse,
   Chip,
-  ToggleButtonGroup,
-  ToggleButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,6 +20,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TextField,
 } from '@mui/material'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -61,7 +60,8 @@ const defaultRequest: EvaluateRequest = {
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 type DisplayMode = 'pro' | 'simple'
-type ChartRange = '60m' | '1d' | '1m' | '3m' | '6m' | '1y' | '5y'
+type StartOption = '1m' | '3m' | '6m' | '1y' | '3y' | '5y' | 'max' | 'custom'
+type PriceDisplayMode = 'normalized' | 'actual'
 
 const motionVariants = {
   initial: { opacity: 0, y: -10 },
@@ -76,7 +76,7 @@ const chartMotion = {
 }
 
 function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
-  const [response, setResponse] = useState<EvaluateResponse | null>(null)
+  const [responses, setResponses] = useState<Partial<Record<IndexType, EvaluateResponse>>>({})
   const [error, setError] = useState<string | null>(null)
   const [syntheticNav, setSyntheticNav] = useState<SyntheticNavResponse | null>(null)
   const [fundNav, setFundNav] = useState<FundNavResponse | null>(null)
@@ -84,21 +84,35 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [indexType, setIndexType] = useState<IndexType>('SP500')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showDetails, setShowDetails] = useState(false)
-  const [chartRange, setChartRange] = useState<ChartRange>('1y')
+  const [startOption, setStartOption] = useState<StartOption>('max')
+  const [customStart, setCustomStart] = useState('')
+  const [priceDisplayMode, setPriceDisplayMode] = useState<PriceDisplayMode>('normalized')
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
-  const [priceSeries, setPriceSeries] = useState<PricePoint[]>([])
+  const [priceSeriesMap, setPriceSeriesMap] = useState<Partial<Record<IndexType, PricePoint[]>>>({})
+
   const tooltipTexts = useMemo(() => buildTooltips(indexType), [indexType])
 
-  const fetchData = async (payload?: Partial<EvaluateRequest>) => {
+  const response = responses[indexType] ?? null
+  const priceSeries = priceSeriesMap[indexType] ?? []
+
+  const fetchEvaluation = async (
+    targetIndex: IndexType,
+    payload?: Partial<EvaluateRequest>,
+    markPrimary = false,
+  ) => {
     try {
-      setError(null)
-      const body = { ...lastRequest, ...(payload ?? {}), index_type: indexType }
+      const body = { ...lastRequest, ...(payload ?? {}), index_type: targetIndex }
+      if (markPrimary) setError(null)
       const res = await apiClient.post<EvaluateResponse>('/api/sp500/evaluate', body)
-      setResponse(res.data)
-      setLastUpdated(new Date())
-      if (payload) setLastRequest((prev) => ({ ...prev, ...payload, index_type: indexType }))
+      setResponses((prev) => ({ ...prev, [targetIndex]: res.data }))
+      if (targetIndex === indexType && payload) setLastRequest((prev) => ({ ...prev, ...payload, index_type: targetIndex }))
+      if (markPrimary) setLastUpdated(new Date())
     } catch (e: any) {
-      setError(e.message)
+      if (markPrimary) {
+        setError(e.message)
+      } else {
+        console.error('評価の取得に失敗しました', e)
+      }
     }
   }
 
@@ -109,6 +123,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
       NIKKEI: '/api/nikkei/price-history',
       NIFTY50: '/api/nifty50/price-history',
       ORUKAN: '/api/orukan/price-history',
+      orukan_jpy: '/api/orukan-jpy/price-history',
     }
     return map[targetIndex]
   }
@@ -116,7 +131,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const fetchPriceSeries = async (targetIndex: IndexType) => {
     try {
       const res = await apiClient.get<PricePoint[]>(getPriceHistoryEndpoint(targetIndex))
-      setPriceSeries(res.data)
+      setPriceSeriesMap((prev) => ({ ...prev, [targetIndex]: res.data }))
     } catch (e: any) {
       console.error('価格履歴取得に失敗しました', e)
     }
@@ -141,8 +156,16 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   }
 
   const fetchAll = () => {
-    fetchData()
-    fetchPriceSeries(indexType)
+    const targets: IndexType[] =
+      indexType === 'ORUKAN' || indexType === 'orukan_jpy'
+        ? ['ORUKAN', 'orukan_jpy']
+        : [indexType]
+
+    targets.forEach((target) => {
+      const isPrimary = target === indexType
+      fetchEvaluation(target, undefined, isPrimary)
+      fetchPriceSeries(target)
+    })
     fetchNavs()
   }
 
@@ -157,11 +180,34 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     return lastUpdated.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
   }, [lastUpdated])
 
-  const filteredSeries = useMemo(() => filterPriceSeries(priceSeries, chartRange), [priceSeries, chartRange])
+  const filteredSeries = useMemo(
+    () => filterPriceSeries(priceSeries, startOption, customStart),
+    [priceSeries, startOption, customStart],
+  )
+
+  const normalizedSeries = useMemo(() => normalizePriceSeries(filteredSeries), [filteredSeries])
+
+  const displaySeries = priceDisplayMode === 'normalized' ? normalizedSeries : filteredSeries
 
   const highlights = useMemo(() => buildHighlights(response), [response])
 
   const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
+
+  const totalReturnLabels = useMemo(
+    () => buildReturnLabels(indexType, priceSeriesMap),
+    [indexType, priceSeriesMap],
+  )
+
+  const forexInsight = useMemo(
+    () => buildForexInsight(indexType, responses),
+    [indexType, responses],
+  )
+
+  useEffect(() => {
+    if (startOption === 'custom' && !customStart && priceSeries.length) {
+      setCustomStart(priceSeries[0].date)
+    }
+  }, [startOption, customStart, priceSeries])
 
   return (
     <Stack spacing={3}>
@@ -254,29 +300,85 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               {PRICE_TITLE_MAP[indexType]}
             </Typography>
           </Tooltip>
-          <Box display="flex" justifyContent="flex-end" mb={1}>
-            <ToggleButtonGroup
-              value={chartRange}
-              exclusive
+          {totalReturnLabels.length > 0 && (
+            <Stack spacing={0.5} mb={2} mt={-0.5}>
+              {totalReturnLabels.map((label) => (
+                <Typography key={label} variant="body2" color="text.secondary">
+                  {label}
+                </Typography>
+              ))}
+            </Stack>
+          )}
+          <Box display="flex" alignItems="center" gap={2} flexWrap="wrap" mb={2}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel id="price-display-mode-label">表示モード</InputLabel>
+              <Select
+                labelId="price-display-mode-label"
+                value={priceDisplayMode}
+                label="表示モード"
+                onChange={(e) => setPriceDisplayMode(e.target.value as PriceDisplayMode)}
+              >
+                <MenuItem value="normalized">正規化</MenuItem>
+                <MenuItem value="actual">実価格</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="start-select-label">開始時点</InputLabel>
+              <Select
+                labelId="start-select-label"
+                value={startOption}
+                label="開始時点"
+                onChange={(e) => setStartOption(e.target.value as StartOption)}
+              >
+                <MenuItem value="max">全期間</MenuItem>
+                <MenuItem value="1m">1ヶ月前</MenuItem>
+                <MenuItem value="3m">3ヶ月前</MenuItem>
+                <MenuItem value="6m">6ヶ月前</MenuItem>
+                <MenuItem value="1y">1年前</MenuItem>
+                <MenuItem value="3y">3年前</MenuItem>
+                <MenuItem value="5y">5年前</MenuItem>
+                <MenuItem value="custom">日付を指定</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="開始日を指定"
+              type="date"
               size="small"
-              onChange={(_, val) => val && setChartRange(val)}
-            >
-              <ToggleButton value="60m">60分</ToggleButton>
-              <ToggleButton value="1d">1日</ToggleButton>
-              <ToggleButton value="1m">1ヶ月</ToggleButton>
-              <ToggleButton value="3m">3ヶ月</ToggleButton>
-              <ToggleButton value="6m">6ヶ月</ToggleButton>
-              <ToggleButton value="1y">1年</ToggleButton>
-              <ToggleButton value="5y">5年</ToggleButton>
-            </ToggleButtonGroup>
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              disabled={startOption !== 'custom'}
+              InputLabelProps={{ shrink: true }}
+            />
           </Box>
           <AnimatePresence mode="wait">
-            <motion.div key={`${chartRange}-${displayMode}`} variants={chartMotion} initial="initial" animate="animate" exit="exit">
-              <PriceChart priceSeries={filteredSeries} simple={displayMode === 'simple'} tooltips={tooltipTexts} />
+            <motion.div
+              key={`${startOption}-${customStart}-${displayMode}-${priceDisplayMode}`}
+              variants={chartMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <PriceChart priceSeries={displaySeries} simple={displayMode === 'simple'} tooltips={tooltipTexts} />
             </motion.div>
           </AnimatePresence>
         </CardContent>
       </Card>
+
+      {forexInsight && (indexType === 'ORUKAN' || indexType === 'orukan_jpy') && (
+        <Card>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>
+              為替インサイト
+            </Typography>
+            <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+              <Chip label={`スコア差: ${forexInsight.diff.toFixed(1)}pt`} color="info" size="small" />
+              <Typography variant="body2" color="text.secondary">
+                {forexInsight.message}
+              </Typography>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
@@ -300,7 +402,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         <DialogContent dividers>
           <PositionForm
             onSubmit={(req) => {
-              fetchData(req)
+              fetchEvaluation(indexType, req, true)
               setPositionDialogOpen(false)
             }}
             marketValue={response?.market_value}
@@ -318,40 +420,134 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   )
 }
 
-function filterPriceSeries(series: PricePoint[], range: ChartRange): PricePoint[] {
+function filterPriceSeries(series: PricePoint[], startOption: StartOption, customStart: string): PricePoint[] {
   if (!series.length) return []
-  const lastDate = dayjs(series[series.length - 1].date)
-  let fromDate = lastDate.subtract(1, 'year')
 
-  switch (range) {
-    case '60m':
-      fromDate = lastDate.subtract(60, 'minute')
-      break
-    case '1d':
-      fromDate = lastDate.subtract(1, 'day')
-      break
+  const startDate = resolveStartDate(series, startOption, customStart)
+  return startDate
+    ? series.filter((p) => {
+        const current = dayjs(p.date)
+        return current.isAfter(startDate) || current.isSame(startDate, 'day')
+      })
+    : series
+}
+
+function normalizePriceSeries(series: PricePoint[]): PricePoint[] {
+  if (!series.length) return []
+
+  const basePrice = series[0].close
+  if (basePrice === 0) return series
+  const factor = 100 / basePrice
+
+  return series.map((p) => ({
+    ...p,
+    close: roundToTwo(p.close * factor),
+    ma20: p.ma20 !== null ? roundToTwo(p.ma20 * factor) : null,
+    ma60: p.ma60 !== null ? roundToTwo(p.ma60 * factor) : null,
+    ma200: p.ma200 !== null ? roundToTwo(p.ma200 * factor) : null,
+  }))
+}
+
+function resolveStartDate(series: PricePoint[], startOption: StartOption, customStart: string) {
+  if (!series.length) return null
+  const lastDate = dayjs(series[series.length - 1].date)
+
+  switch (startOption) {
     case '1m':
-      fromDate = lastDate.subtract(1, 'month')
-      break
+      return lastDate.subtract(30, 'day')
     case '3m':
-      fromDate = lastDate.subtract(3, 'month')
-      break
+      return lastDate.subtract(90, 'day')
     case '6m':
-      fromDate = lastDate.subtract(6, 'month')
-      break
-    case '5y':
-      fromDate = lastDate.subtract(5, 'year')
-      break
+      return lastDate.subtract(180, 'day')
     case '1y':
+      return lastDate.subtract(365, 'day')
+    case '3y':
+      return lastDate.subtract(3 * 365, 'day')
+    case '5y':
+      return lastDate.subtract(5 * 365, 'day')
+    case 'custom': {
+      const parsed = dayjs(customStart)
+      if (parsed.isValid()) return parsed
+      return dayjs(series[0].date)
+    }
+    case 'max':
     default:
-      fromDate = lastDate.subtract(1, 'year')
-      break
+      return dayjs(series[0].date)
+  }
+}
+
+function buildReturnLabels(indexType: IndexType, priceSeriesMap: Partial<Record<IndexType, PricePoint[]>>): string[] {
+  const labels: string[] = []
+  const usdSeries = priceSeriesMap.ORUKAN ?? []
+  const jpySeries = priceSeriesMap.orukan_jpy ?? []
+
+  if (indexType === 'orukan_jpy') {
+    const usdReturn = calculateTotalReturn(usdSeries)
+    const jpyReturn = calculateTotalReturn(jpySeries)
+    if (usdReturn !== null) labels.push(`ドル建て  ：5年トータル ${formatPercentage(usdReturn)}`)
+    if (jpyReturn !== null) labels.push(`円建て    ：5年トータル ${formatPercentage(jpyReturn)}`)
+    return labels
   }
 
-  return series.filter((p) => {
-    const current = dayjs(p.date)
-    return current.isAfter(fromDate) || current.isSame(fromDate, 'day')
-  })
+  const baseSeries = indexType === 'ORUKAN' ? usdSeries : priceSeriesMap[indexType]
+  const ret = calculateTotalReturn(baseSeries ?? [])
+  if (ret !== null) labels.push(`${getCurrencyLabel(indexType)} ：5年トータル ${formatPercentage(ret)}`)
+  return labels
+}
+
+function calculateTotalReturn(series: PricePoint[], years = 5): number | null {
+  if (!series.length) return null
+  const latest = series[series.length - 1]
+  const targetDate = dayjs(latest.date).subtract(years, 'year')
+  const past = series.find((p) => !dayjs(p.date).isBefore(targetDate, 'day'))
+  if (!past) return null
+  if (past.close === 0) return null
+  return ((latest.close / past.close - 1) * 100)
+}
+
+function formatPercentage(value: number): string {
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${value.toFixed(1)}%`
+}
+
+function getCurrencyLabel(indexType: IndexType): 'ドル建て' | '円建て' {
+  if (indexType === 'TOPIX' || indexType === 'NIKKEI') return '円建て'
+  return 'ドル建て'
+}
+
+function buildForexInsight(
+  indexType: IndexType,
+  responses: Partial<Record<IndexType, EvaluateResponse>>,
+): { diff: number; message: string } | null {
+  if (indexType !== 'ORUKAN' && indexType !== 'orukan_jpy') return null
+  const usd = responses.ORUKAN
+  const jpy = responses.orukan_jpy
+  if (!usd || !jpy) return null
+
+  const usdScore = usd.scores?.total ?? 0
+  const jpyScore = jpy.scores?.total ?? 0
+  const diff = jpyScore - usdScore
+
+  if (diff > 5) {
+    return {
+      diff,
+      message: '為替の影響で上振れしています。円安が進んだため、円建て評価額が押し上げられています。',
+    }
+  }
+  if (diff < -5) {
+    return {
+      diff,
+      message: '株価は上昇していますが、円高により円建てでは利益が削られています。為替による下押しが発生しています。',
+    }
+  }
+  return {
+    diff,
+    message: 'ドル建てと円建ての動きはほぼ一致しています。為替の影響は小さく、中立的です。',
+  }
+}
+
+function roundToTwo(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 function getScoreZoneText(score?: number) {
