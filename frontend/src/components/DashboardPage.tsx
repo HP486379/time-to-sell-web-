@@ -119,6 +119,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const getPriceHistoryEndpoint = (targetIndex: IndexType) => {
     const map: Record<IndexType, string> = {
       SP500: '/api/sp500/price-history',
+      sp500_jpy: '/api/sp500-jpy/price-history',
       TOPIX: '/api/topix/price-history',
       NIKKEI: '/api/nikkei/price-history',
       NIFTY50: '/api/nifty50/price-history',
@@ -156,10 +157,11 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   }
 
   const fetchAll = () => {
-    const targets: IndexType[] =
-      indexType === 'ORUKAN' || indexType === 'orukan_jpy'
-        ? ['ORUKAN', 'orukan_jpy']
-        : [indexType]
+    const targets: IndexType[] = (() => {
+      if (indexType === 'ORUKAN' || indexType === 'orukan_jpy') return ['ORUKAN', 'orukan_jpy']
+      if (indexType === 'sp500_jpy') return ['SP500', 'sp500_jpy']
+      return [indexType]
+    })()
 
     targets.forEach((target) => {
       const isPrimary = target === indexType
@@ -180,22 +182,20 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     return lastUpdated.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
   }, [lastUpdated])
 
-  const filteredSeries = useMemo(
-    () => filterPriceSeries(priceSeries, startOption, customStart),
-    [priceSeries, startOption, customStart],
-  )
-
-  const normalizedSeries = useMemo(() => normalizePriceSeries(filteredSeries), [filteredSeries])
-
-  const displaySeries = priceDisplayMode === 'normalized' ? normalizedSeries : filteredSeries
-
   const highlights = useMemo(() => buildHighlights(response), [response])
 
   const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
 
-  const totalReturnLabels = useMemo(
-    () => buildReturnLabels(indexType, priceSeriesMap),
-    [indexType, priceSeriesMap],
+  const { chartSeries, totalReturnLabels, legendLabels } = useMemo(
+    () =>
+      buildChartState({
+        indexType,
+        priceSeriesMap,
+        startOption,
+        customStart,
+        priceDisplayMode,
+      }),
+    [indexType, priceSeriesMap, startOption, customStart, priceDisplayMode],
   )
 
   const forexInsight = useMemo(
@@ -358,13 +358,18 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               animate="animate"
               exit="exit"
             >
-              <PriceChart priceSeries={displaySeries} simple={displayMode === 'simple'} tooltips={tooltipTexts} />
+              <PriceChart
+                priceSeries={chartSeries}
+                simple={displayMode === 'simple'}
+                tooltips={tooltipTexts}
+                legendLabels={legendLabels}
+              />
             </motion.div>
           </AnimatePresence>
         </CardContent>
       </Card>
 
-      {forexInsight && (indexType === 'ORUKAN' || indexType === 'orukan_jpy') && (
+      {forexInsight && (
         <Card>
           <CardContent>
             <Typography variant="subtitle1" gutterBottom>
@@ -420,25 +425,87 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   )
 }
 
-function filterPriceSeries(series: PricePoint[], startOption: StartOption, customStart: string): PricePoint[] {
-  if (!series.length) return []
+type ChartPoint = PricePoint & { closeUsd?: number }
 
-  const startDate = resolveStartDate(series, startOption, customStart)
-  return startDate
-    ? series.filter((p) => {
-        const current = dayjs(p.date)
-        return current.isAfter(startDate) || current.isSame(startDate, 'day')
-      })
-    : series
+type LegendLabels = {
+  close?: string
+  closeUsd?: string
+  ma20?: string
+  ma60?: string
+  ma200?: string
+}
+
+type ChartStateParams = {
+  indexType: IndexType
+  priceSeriesMap: Partial<Record<IndexType, PricePoint[]>>
+  startOption: StartOption
+  customStart: string
+  priceDisplayMode: PriceDisplayMode
+}
+
+function buildChartState({
+  indexType,
+  priceSeriesMap,
+  startOption,
+  customStart,
+  priceDisplayMode,
+}: ChartStateParams): { chartSeries: ChartPoint[]; totalReturnLabels: string[]; legendLabels?: LegendLabels } {
+  const primaryRaw = priceSeriesMap[indexType] ?? []
+  const startDate = resolveStartDate(primaryRaw, startOption, customStart)
+  const primaryFiltered = filterSeriesFromStart(primaryRaw, startDate)
+  const durationLabel = getDurationLabel(startOption, customStart)
+  const normalizedPrimary = normalizePriceSeries(primaryFiltered)
+  const baseSeries = priceDisplayMode === 'normalized' ? normalizedPrimary : primaryFiltered
+
+  if (isFxConvertedIndex(indexType)) {
+    const baseIndex = getBaseIndex(indexType)
+    const secondaryRaw = baseIndex ? priceSeriesMap[baseIndex] ?? [] : []
+    const secondaryFiltered = filterSeriesFromStart(secondaryRaw, startDate)
+    const normalizedSecondary = normalizePriceSeries(secondaryFiltered)
+    const useUsdLine = priceDisplayMode === 'normalized'
+    const chartSeries = useUsdLine
+      ? buildDualSeries(normalizedPrimary, normalizedSecondary)
+      : baseSeries
+
+    return {
+      chartSeries,
+      totalReturnLabels: buildReturnLabels({
+        indexType,
+        primarySeries: primaryFiltered,
+        secondarySeries: secondaryFiltered,
+        durationLabel,
+      }),
+      legendLabels: useUsdLine
+        ? {
+            close: '円建て（終値）',
+            closeUsd: 'ドル建て（終値）',
+            ma20: 'MA20',
+            ma60: 'MA60',
+            ma200: 'MA200',
+          }
+        : undefined,
+    }
+  }
+
+  return {
+    chartSeries: baseSeries,
+    totalReturnLabels: buildReturnLabels({ indexType, primarySeries: primaryFiltered, durationLabel }),
+  }
+}
+
+function filterSeriesFromStart(series: PricePoint[], startDate: dayjs.Dayjs | null): PricePoint[] {
+  if (!series.length || !startDate) return series
+  return series.filter((p) => {
+    const current = dayjs(p.date)
+    return current.isAfter(startDate) || current.isSame(startDate, 'day')
+  })
 }
 
 function normalizePriceSeries(series: PricePoint[]): PricePoint[] {
   if (!series.length) return []
-
   const basePrice = series[0].close
   if (basePrice === 0) return series
   const factor = 100 / basePrice
-
   return series.map((p) => ({
     ...p,
     close: roundToTwo(p.close * factor),
@@ -446,6 +513,16 @@ function normalizePriceSeries(series: PricePoint[]): PricePoint[] {
     ma60: p.ma60 !== null ? roundToTwo(p.ma60 * factor) : null,
     ma200: p.ma200 !== null ? roundToTwo(p.ma200 * factor) : null,
   }))
+}
+
+function buildDualSeries(primary: PricePoint[], secondary: PricePoint[]): ChartPoint[] {
+  const secondaryMap = new Map(secondary.map((p) => [p.date, p.close]))
+  return primary
+    .filter((p) => secondaryMap.has(p.date))
+    .map((p) => ({
+      ...p,
+      closeUsd: roundToTwo(secondaryMap.get(p.date) ?? 0),
+    }))
 }
 
 function resolveStartDate(series: PricePoint[], startOption: StartOption, customStart: string) {
@@ -476,33 +553,12 @@ function resolveStartDate(series: PricePoint[], startOption: StartOption, custom
   }
 }
 
-function buildReturnLabels(indexType: IndexType, priceSeriesMap: Partial<Record<IndexType, PricePoint[]>>): string[] {
-  const labels: string[] = []
-  const usdSeries = priceSeriesMap.ORUKAN ?? []
-  const jpySeries = priceSeriesMap.orukan_jpy ?? []
-
-  if (indexType === 'orukan_jpy') {
-    const usdReturn = calculateTotalReturn(usdSeries)
-    const jpyReturn = calculateTotalReturn(jpySeries)
-    if (usdReturn !== null) labels.push(`ドル建て  ：5年トータル ${formatPercentage(usdReturn)}`)
-    if (jpyReturn !== null) labels.push(`円建て    ：5年トータル ${formatPercentage(jpyReturn)}`)
-    return labels
-  }
-
-  const baseSeries = indexType === 'ORUKAN' ? usdSeries : priceSeriesMap[indexType]
-  const ret = calculateTotalReturn(baseSeries ?? [])
-  if (ret !== null) labels.push(`${getCurrencyLabel(indexType)} ：5年トータル ${formatPercentage(ret)}`)
-  return labels
-}
-
-function calculateTotalReturn(series: PricePoint[], years = 5): number | null {
+function calculatePeriodReturn(series: PricePoint[]): number | null {
   if (!series.length) return null
-  const latest = series[series.length - 1]
-  const targetDate = dayjs(latest.date).subtract(years, 'year')
-  const past = series.find((p) => !dayjs(p.date).isBefore(targetDate, 'day'))
-  if (!past) return null
-  if (past.close === 0) return null
-  return ((latest.close / past.close - 1) * 100)
+  const first = series[0].close
+  const last = series[series.length - 1].close
+  if (first === 0) return null
+  return ((last / first - 1) * 100)
 }
 
 function formatPercentage(value: number): string {
@@ -510,8 +566,52 @@ function formatPercentage(value: number): string {
   return `${sign}${value.toFixed(1)}%`
 }
 
+function getDurationLabel(startOption: StartOption, customStart: string): string {
+  const map: Record<StartOption, string> = {
+    '1m': '1ヶ月トータル',
+    '3m': '3ヶ月トータル',
+    '6m': '6ヶ月トータル',
+    '1y': '1年トータル',
+    '3y': '3年トータル',
+    '5y': '5年トータル',
+    max: '全期間トータル',
+    custom: '開始日からのトータル',
+  }
+  if (startOption === 'custom' && dayjs(customStart).isValid()) {
+    return '開始日からのトータル'
+  }
+  return map[startOption]
+}
+
+function buildReturnLabels({
+  indexType,
+  primarySeries,
+  secondarySeries,
+  durationLabel,
+}: {
+  indexType: IndexType
+  primarySeries: PricePoint[]
+  secondarySeries?: PricePoint[]
+  durationLabel: string
+}): string[] {
+  const labels: string[] = []
+
+  if (isFxConvertedIndex(indexType)) {
+    const usdReturn = calculatePeriodReturn(secondarySeries ?? [])
+    const jpyReturn = calculatePeriodReturn(primarySeries)
+    if (usdReturn !== null) labels.push(`ドル建て：${durationLabel} ${formatPercentage(usdReturn)}`)
+    if (jpyReturn !== null) labels.push(`円建て  ：${durationLabel} ${formatPercentage(jpyReturn)}`)
+    return labels
+  }
+
+  const ret = calculatePeriodReturn(primarySeries)
+  if (ret !== null) labels.push(`${getCurrencyLabel(indexType)} ：${durationLabel} ${formatPercentage(ret)}`)
+  return labels
+}
+
 function getCurrencyLabel(indexType: IndexType): 'ドル建て' | '円建て' {
-  if (indexType === 'TOPIX' || indexType === 'NIKKEI') return '円建て'
+  if (indexType === 'TOPIX' || indexType === 'NIKKEI' || indexType === 'orukan_jpy' || indexType === 'sp500_jpy')
+    return '円建て'
   return 'ドル建て'
 }
 
@@ -519,9 +619,18 @@ function buildForexInsight(
   indexType: IndexType,
   responses: Partial<Record<IndexType, EvaluateResponse>>,
 ): { diff: number; message: string } | null {
-  if (indexType !== 'ORUKAN' && indexType !== 'orukan_jpy') return null
-  const usd = responses.ORUKAN
-  const jpy = responses.orukan_jpy
+  const forexTargets: Partial<Record<IndexType, [IndexType, IndexType]>> = {
+    ORUKAN: ['ORUKAN', 'orukan_jpy'],
+    orukan_jpy: ['ORUKAN', 'orukan_jpy'],
+    sp500_jpy: ['SP500', 'sp500_jpy'],
+    SP500: ['SP500', 'sp500_jpy'],
+  }
+
+  const pair = forexTargets[indexType]
+  if (!pair) return null
+
+  const usd = responses[pair[0]]
+  const jpy = responses[pair[1]]
   if (!usd || !jpy) return null
 
   const usdScore = usd.scores?.total ?? 0
@@ -544,6 +653,16 @@ function buildForexInsight(
     diff,
     message: 'ドル建てと円建ての動きはほぼ一致しています。為替の影響は小さく、中立的です。',
   }
+}
+
+function isFxConvertedIndex(indexType: IndexType): boolean {
+  return indexType === 'orukan_jpy' || indexType === 'sp500_jpy'
+}
+
+function getBaseIndex(indexType: IndexType): IndexType | null {
+  if (indexType === 'orukan_jpy') return 'ORUKAN'
+  if (indexType === 'sp500_jpy') return 'SP500'
+  return null
 }
 
 function roundToTwo(value: number): number {

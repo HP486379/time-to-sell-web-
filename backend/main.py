@@ -19,6 +19,7 @@ from services.backtest_service import BacktestService
 
 class IndexType(str, Enum):
     SP500 = "SP500"
+    SP500_JPY = "sp500_jpy"
     TOPIX = "TOPIX"
     NIKKEI = "NIKKEI"
     NIFTY50 = "NIFTY50"
@@ -224,6 +225,12 @@ def get_orukan_price_history():
 @app.get("/api/orukan-jpy/price-history", response_model=List[PricePoint])
 def get_orukan_jpy_price_history():
     snapshot = get_cached_snapshot(index_type=IndexType.ORUKAN_JPY)
+    return snapshot["price_series"]
+
+
+@app.get("/api/sp500-jpy/price-history", response_model=List[PricePoint])
+def get_sp500_jpy_price_history():
+    snapshot = get_cached_snapshot(index_type=IndexType.SP500_JPY)
     return snapshot["price_series"]
 
 

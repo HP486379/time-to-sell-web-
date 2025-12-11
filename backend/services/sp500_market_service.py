@@ -27,10 +27,13 @@ class SP500MarketService:
             "ORUKAN": os.getenv("ORUKAN_SYMBOL", "ACWI"),
             # オルカン円建ては ACWI × USD/JPY を用いる
             "orukan_jpy": os.getenv("ORUKAN_JPY_SYMBOL", os.getenv("ORUKAN_SYMBOL", "ACWI")),
+            # S&P500 円建ては ^GSPC × USD/JPY を用いる
+            "sp500_jpy": os.getenv("SP500_JPY_SYMBOL", os.getenv("SP500_SYMBOL", "^GSPC")),
         }
 
         self.fx_symbol_map = {
             "orukan_jpy": os.getenv("ORUKAN_JPY_FX_SYMBOL", "JPY=X"),
+            "sp500_jpy": os.getenv("SP500_JPY_FX_SYMBOL", "JPY=X"),
         }
 
         self.price_type_map = {
@@ -40,6 +43,7 @@ class SP500MarketService:
             "NIFTY50": os.getenv("NIFTY50_PRICE_TYPE", "index"),
             "ORUKAN": "index",
             "orukan_jpy": "index_jpy",
+            "sp500_jpy": "index_jpy",
         }
 
         self.nav_api_map = {
@@ -56,6 +60,7 @@ class SP500MarketService:
             "NIFTY50": self._flag("NIFTY50_ALLOW_SYNTHETIC_FALLBACK", default=True),
             "ORUKAN": True,
             "orukan_jpy": True,
+            "sp500_jpy": True,
         }
 
         self.start_prices = {
@@ -65,6 +70,7 @@ class SP500MarketService:
             "NIFTY50": 4000.0,
             "ORUKAN": 15000.0,
             "orukan_jpy": 15000.0,
+            "sp500_jpy": 4000.0,
         }
 
         logger.info(
@@ -198,6 +204,7 @@ class SP500MarketService:
             "NIFTY50": 0.08,
             "ORUKAN": 0.06,
             "orukan_jpy": 0.06,
+            "sp500_jpy": 0.07,
         }
         annual_drift = annual_drift_map.get(index_type, 0.05)
         daily_drift = annual_drift / 260.0
