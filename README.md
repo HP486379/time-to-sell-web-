@@ -27,22 +27,23 @@
   - TOPIX: `.env` に `TOPIX_SYMBOL=1306.T`（TOPIX ETF）を指定（デフォルトも 1306.T）。
   - 日経225: `.env` に `NIKKEI_SYMBOL=^N225`（デフォルト）
   - NIFTY50: `.env` に `NIFTY50_SYMBOL=^NSEI`（デフォルト）
-  - オルカン: `.env` に `ORUKAN_SYMBOL=0P00001I2M.T`（eMAXIS Slim 全世界株式の基準価額ティッカー例）
+  - オルカン（USD建て）: `.env` に `ORUKAN_SYMBOL=ACWI`（MSCI ACWI 連動 ETF をプロキシとして使用）
+  - オルカン（円建て）: `.env` に `ORUKAN_JPY_SYMBOL=ACWI` と `ORUKAN_JPY_FX_SYMBOL=JPY=X`（USD/JPY 終値で円換算）
 - 実データ取得元
-  - 株価・指数: yfinance（S&P500 / TOPIX / 日経225 / NIFTY50 / オルカン いずれも指定シンボルの終値を取得）
-  - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用
+  - 株価・指数: yfinance（S&P500 / TOPIX / 日経225 / NIFTY50 / オルカン の終値を取得。オルカン円建ては ACWI × USD/JPY で計算）
+  - NAV API がある場合（任意）: `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` を設定すると、`<base>/history?symbol=...` を優先利用
   - マクロ指標: FRED (`FRED_API_KEY` がある場合) → 無い場合は yfinance の代替 → それでも取得できなければ決定的なダミー値
 - バックテストのフォールバック制御（疑似データを許可する場合）
   - 取得失敗時に決定的な疑似系列へ切り替えるには、真偽値として解釈される値（`1` / `true` / `yes` / `on`）をセットしてください。
     - `BACKTEST_ALLOW_FALLBACK=1`（バックテスト時にフォールバックを許可するか）
-    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（指数ごとに疑似価格履歴を許可するか）
+    - `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1`（指数ごとに疑似価格履歴を許可するか）
   - いずれかが 0/false の場合はその指数でフォールバックせず、外部データ取得に失敗すると 502 を返します。メッセージ: `external data unavailable (check network / API key / symbol)`
 - 基準価額（円）の取得:
   - 参考基準価額: `GET /api/nav/sp500-synthetic`（S&P500 × USD/JPY）
   - eMAXIS Slim 米国株式（S&P500）基準価額: `GET /api/nav/emaxis-slim-sp500`（取得できない場合は参考値で代替）
 - シンプルバックテスト（閾値売買）:
 - `POST /api/backtest` に `{ "start_date": "2004-01-01", "end_date": "2024-12-31", "initial_cash": 1000000, "buy_threshold": 40, "sell_threshold": 80, "index_type": "SP500" }` のように渡すと、
-    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します（`index_type` は `SP500` / `TOPIX` / `NIKKEI` / `NIFTY50` / `ORUKAN`）。
+    日次のスコアに基づく BUY/SELL 履歴とポートフォリオ推移、単純ホールド比較を返します（`index_type` は `SP500` / `TOPIX` / `NIKKEI` / `NIFTY50` / `ORUKAN` / `orukan_jpy`）。
 
 #### 環境設定の例
 - ローカル検証（疑似データのみで完結させたい場合）
@@ -51,17 +52,17 @@
   - `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1`
   - `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1`
   - `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1`
-  - `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`
   - 実データ用キーは未設定でも 200 が返り、決定的な疑似系列で計算されます。
 - 本番想定（実データ優先・失敗時フォールバック）
   - `SP500_SYMBOL=VOO`（または好みの S&P500 連動銘柄）
   - `TOPIX_SYMBOL=1306.T`（任意の TOPIX 連動銘柄）
   - `NIKKEI_SYMBOL=^N225`
   - `NIFTY50_SYMBOL=^NSEI`
-  - `ORUKAN_SYMBOL=0P00001I2M.T`（オルカンの基準価額ティッカー例）
+  - `ORUKAN_SYMBOL=ACWI`（オルカンは ACWI の値動きを利用）
+  - `ORUKAN_JPY_SYMBOL=ACWI` / `ORUKAN_JPY_FX_SYMBOL=JPY=X`（オルカン円建ては ACWI をドル円で換算）
   - `FRED_API_KEY=<your_key>`（マクロ指標が実データになります）
-  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1` / `ORUKAN_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
-  - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` / `ORUKAN_NAV_API_BASE` を追加設定
+  - `BACKTEST_ALLOW_FALLBACK=1` / `SP500_ALLOW_SYNTHETIC_FALLBACK=1` / `TOPIX_ALLOW_SYNTHETIC_FALLBACK=1` / `NIKKEI_ALLOW_SYNTHETIC_FALLBACK=1` / `NIFTY50_ALLOW_SYNTHETIC_FALLBACK=1`（回線断時に疑似系列へ切替）
+  - NAV API を使う場合は `SP500_NAV_API_BASE` / `TOPIX_NAV_API_BASE` / `NIKKEI_NAV_API_BASE` / `NIFTY50_NAV_API_BASE` を追加設定
 
 バックエンド起動時には、マーケットサービスとバックテストの各フォールバック設定がログに出力されます（例: `[MARKET CONFIG] ...`, `[BACKTEST CONFIG] ...`）。外部データ経路が使われたかどうかも INFO ログで確認できます。
 

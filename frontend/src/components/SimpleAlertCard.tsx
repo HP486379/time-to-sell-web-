@@ -2,6 +2,7 @@ import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Too
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import type { TooltipTexts } from '../tooltipTexts'
 import type { SimpleAlertLevel } from './UridokiKunAvatar'
+import { AnimatedSignalLight, type SignalLevel } from './AnimatedSignalLight'
 
 interface Props {
   scores?: {
@@ -91,9 +92,13 @@ const getScoreZoneText = (score?: number) => {
       currency: 'JPY',
       maximumFractionDigits: 0,
     })
-    const envTrafficLight = (import.meta.env.VITE_TRAFFIC_LIGHT_SPRITE as string | undefined) ?? undefined
-    const defaultTrafficLight = '/traffic-light-uridoki-style.png'
-    const trafficLightSrc = envTrafficLight ?? defaultTrafficLight
+    const signalLevel: SignalLevel = scores?.total === undefined
+      ? 'hold'
+      : scores.total >= 70
+        ? 'sell'
+        : scores.total <= 30
+          ? 'buy'
+          : 'hold'
 
   return (
     <Card
@@ -111,18 +116,7 @@ const getScoreZoneText = (score?: number) => {
             </Typography>
           </Tooltip>
           <Stack direction="row" alignItems="center" spacing={2}>
-              <Box
-                component="img"
-                src={trafficLightSrc}
-                alt="信号機アイコン"
-                sx={{
-                  width: { xs: 72, sm: 96, md: 110 },
-                height: 'auto',
-                objectFit: 'contain',
-                flexShrink: 0,
-                borderRadius: 2,
-              }}
-            />
+            <AnimatedSignalLight level={signalLevel} />
             <Stack spacing={0.5}>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Typography variant="h3" component="span">
