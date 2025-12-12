@@ -81,60 +81,69 @@ const getScoreZoneText = (score?: number) => {
   return '現在のスコアは「かなり低い水準」です。'
 }
 
-  function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded, tooltips }: Props) {
-    const theme = useTheme()
-    const alert = getAlert(scores?.total)
-    const baseColor = alert.color
-    const costBasis = marketValue !== undefined && pnl !== undefined ? marketValue - pnl : undefined
+function SimpleAlertCard({ scores, marketValue, pnl, highlights = [], zoneText, onShowDetails, expanded, tooltips }: Props) {
+  const theme = useTheme()
+  const isDark = theme.palette.mode === 'dark'
+  const alert = getAlert(scores?.total)
+  const baseColor = alert.color
+  const costBasis = marketValue !== undefined && pnl !== undefined ? marketValue - pnl : undefined
   const pnlPct = costBasis && costBasis !== 0 ? (pnl! / costBasis) * 100 : null
-    const jpyFormatter = new Intl.NumberFormat('ja-JP', {
-      style: 'currency',
-      currency: 'JPY',
-      maximumFractionDigits: 0,
-    })
-    const signalLevel: SignalLevel = scores?.total === undefined
-      ? 'hold'
-      : scores.total >= 70
-        ? 'sell'
-        : scores.total <= 30
-          ? 'buy'
-          : 'hold'
+  const jpyFormatter = new Intl.NumberFormat('ja-JP', {
+    style: 'currency',
+    currency: 'JPY',
+    maximumFractionDigits: 0,
+  })
+  const signalLevel: SignalLevel = scores?.total === undefined
+    ? 'hold'
+    : scores.total >= 70
+      ? 'sell'
+      : scores.total <= 30
+        ? 'buy'
+        : 'hold'
 
   return (
     <Card
+      className={`alert-card ${isDark ? 'alert-card-dark' : ''}`}
       sx={{
-        background: baseColor,
-        border: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`,
-        boxShadow: `0 12px 30px ${alpha(theme.palette.text.primary, 0.08)}`,
+        background: isDark ? '#2b2f38' : baseColor,
+        border: `1px solid ${alpha(isDark ? theme.palette.common.white : theme.palette.text.primary, 0.12)}`,
+        boxShadow: `0 12px 30px ${alpha(theme.palette.text.primary, isDark ? 0.24 : 0.08)}`,
       }}
     >
       <CardContent>
         <Stack spacing={2}>
           <Tooltip title={tooltips.simple.alert} arrow>
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="overline" color={isDark ? '#d2d2d2' : 'text.secondary'} className="alert-title">
               シンプル・アラート
             </Typography>
           </Tooltip>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <AnimatedSignalLight level={signalLevel} />
-            <Stack spacing={0.5}>
+            <Box sx={{ minWidth: 104, display: 'flex', justifyContent: 'center' }}>
+              <AnimatedSignalLight level={signalLevel} themeMode={isDark ? 'dark' : 'light'} />
+            </Box>
+            <Stack spacing={0.5} flex={1} justifyContent="center">
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Typography variant="h3" component="span">
                   {alert.icon}
                 </Typography>
-                <Typography variant="h6" fontWeight={700} color={theme.palette.text.primary}>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  color={isDark ? '#ffffff' : theme.palette.text.primary}
+                  className="alert-title"
+                >
                   {alert.title}
                 </Typography>
               </Stack>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color={isDark ? '#d2d2d2' : 'text.secondary'} className="alert-text">
                 {alert.reaction}
               </Typography>
             </Stack>
           </Stack>
-          <Typography variant="body1" color={theme.palette.text.primary}>
+          <Typography variant="body1" color={isDark ? '#ffffff' : theme.palette.text.primary} className="alert-text">
             {alert.message}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color={isDark ? '#d2d2d2' : 'text.secondary'} className="alert-text">
             {zoneText ?? getScoreZoneText(scores?.total)}
           </Typography>
           {pnl !== undefined && marketValue !== undefined && (

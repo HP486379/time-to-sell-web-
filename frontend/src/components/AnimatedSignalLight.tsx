@@ -2,9 +2,11 @@ import { Box } from '@mui/material'
 import { keyframes, styled } from '@mui/material/styles'
 
 export type SignalLevel = 'buy' | 'hold' | 'sell'
+type ThemeMode = 'light' | 'dark'
 
 interface AnimatedSignalLightProps {
   level: SignalLevel
+  themeMode?: ThemeMode
 }
 
 const pulse = keyframes`
@@ -14,7 +16,7 @@ const pulse = keyframes`
   }
   50% {
     opacity: 1;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.22);
   }
   100% {
     opacity: 0.4;
@@ -22,30 +24,39 @@ const pulse = keyframes`
   }
 `
 
-const SignalBody = styled(Box)(() => ({
+interface SignalBodyProps {
+  themeMode?: ThemeMode
+}
+
+const SignalBody = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'themeMode',
+})<SignalBodyProps>(({ themeMode }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
-  padding: '8px 10px',
+  gap: 12,
+  padding: '12px 16px',
   borderRadius: 9999,
-  background: '#ffe5d5',
+  background: themeMode === 'dark' ? '#3a3f49' : '#ffe5d5',
+  width: '100%',
+  justifyContent: 'center',
 }))
 
 interface LightProps {
   bg: string
   active?: boolean
+  themeMode?: ThemeMode
 }
 
 const Light = styled(Box, {
-  shouldForwardProp: (prop) => prop !== 'bg' && prop !== 'active',
-})<LightProps>(({ bg, active }) => ({
-  width: 20,
-  height: 20,
+  shouldForwardProp: (prop) => prop !== 'bg' && prop !== 'active' && prop !== 'themeMode',
+})<LightProps>(({ bg, active, themeMode }) => ({
+  width: 28,
+  height: 28,
   borderRadius: 9999,
-  opacity: 0.4,
-  boxShadow: '0 0 0 rgba(0, 0, 0, 0)',
+  opacity: active ? 1 : themeMode === 'dark' ? 0.35 : 0.4,
+  boxShadow: active ? '0 0 12px rgba(255, 255, 255, 0.22)' : '0 0 0 rgba(0, 0, 0, 0)',
   background: bg,
-  animation: active ? `${pulse} 1.2s ease-in-out infinite` : 'none',
+  animation: active ? `${pulse} 1.4s ease-in-out infinite` : 'none',
 }))
 
 function getLabel(level: SignalLevel) {
@@ -54,12 +65,27 @@ function getLabel(level: SignalLevel) {
   return 'ホールドシグナル'
 }
 
-export const AnimatedSignalLight = ({ level }: AnimatedSignalLightProps) => (
-  <Box aria-label={getLabel(level)} sx={{ flexShrink: 0 }}>
-    <SignalBody>
-      <Light bg="#ff6b6b" active={level === 'sell'} className="light light-red" />
-      <Light bg="#ffd166" active={level === 'hold'} className="light light-yellow" />
-      <Light bg="#52d08a" active={level === 'buy'} className="light light-green" />
+export const AnimatedSignalLight = ({ level, themeMode = 'light' }: AnimatedSignalLightProps) => (
+  <Box aria-label={getLabel(level)} sx={{ flexShrink: 0, width: 96 }}>
+    <SignalBody themeMode={themeMode} className={`signal-body ${themeMode === 'dark' ? 'signal-body-dark' : ''}`}>
+      <Light
+        bg={themeMode === 'dark' ? '#ff5c5c' : '#ff6b6b'}
+        active={level === 'sell'}
+        themeMode={themeMode}
+        className="light light-red"
+      />
+      <Light
+        bg={themeMode === 'dark' ? '#f3d96b' : '#ffd166'}
+        active={level === 'hold'}
+        themeMode={themeMode}
+        className="light light-yellow"
+      />
+      <Light
+        bg={themeMode === 'dark' ? '#4bd48a' : '#52d08a'}
+        active={level === 'buy'}
+        themeMode={themeMode}
+        className="light light-green"
+      />
     </SignalBody>
   </Box>
 )
