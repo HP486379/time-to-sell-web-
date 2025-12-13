@@ -20,6 +20,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  FormHelperText,
   TextField,
 } from '@mui/material'
 import axios from 'axios'
@@ -91,7 +92,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
   const [priceSeriesMap, setPriceSeriesMap] = useState<Partial<Record<IndexType, PricePoint[]>>>({})
 
-  const tooltipTexts = useMemo(() => buildTooltips(indexType), [indexType])
+  const tooltipTexts = useMemo(() => buildTooltips(indexType, lastRequest.score_ma), [indexType, lastRequest.score_ma])
 
   const response = responses[indexType] ?? null
   const priceSeries = priceSeriesMap[indexType] ?? []
@@ -214,6 +215,13 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     }
   }, [startOption, customStart, priceSeries])
 
+  const scoreMaLabel = displayMode === 'simple' ? '売買の目安（期間）' : 'スコア算出MA'
+  const scoreMaOptions = [
+    { value: 20, label: '20日（短期）' },
+    { value: 60, label: '60日（中期）' },
+    { value: 200, label: '200日（長期）' },
+  ]
+
   return (
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
@@ -233,23 +241,26 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             ))}
           </Select>
         </FormControl>
-        {displayMode === 'pro' && (
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="score-ma-select-label">スコア算出MA</InputLabel>
-            <Select
-              labelId="score-ma-select-label"
-              value={lastRequest.score_ma}
-              label="スコア算出MA"
-              onChange={(e) => handleScoreMaChange(Number(e.target.value))}
-            >
-              {[20, 60, 200].map((ma) => (
-                <MenuItem key={ma} value={ma}>
-                  {ma}日
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="score-ma-select-label">{scoreMaLabel}</InputLabel>
+          <Select
+            labelId="score-ma-select-label"
+            value={lastRequest.score_ma}
+            label={scoreMaLabel}
+            onChange={(e) => handleScoreMaChange(Number(e.target.value))}
+          >
+            {scoreMaOptions.map(({ value, label }) => (
+              <MenuItem key={value} value={value}>
+                {label}
+              </MenuItem>
+            ))}
+          </Select>
+          {displayMode === 'simple' && (
+            <FormHelperText sx={{ whiteSpace: 'nowrap' }}>
+              この期間（日数）を目安に売却タイミングを計算します
+            </FormHelperText>
+          )}
+        </FormControl>
         <Box display="flex" alignItems="center" gap={1}>
           <Chip label={`最終更新: ${lastUpdatedLabel}`} size="small" />
           <Tooltip title="最新データを取得" arrow>
