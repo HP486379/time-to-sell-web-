@@ -1,4 +1,4 @@
-import { Box } from '@mui/material'
+import { alpha, Box } from '@mui/material'
 import { keyframes, styled } from '@mui/material/styles'
 
 export type SignalLevel = 'buy' | 'hold' | 'sell'
@@ -22,13 +22,16 @@ const pulse = keyframes`
   }
 `
 
-const SignalBody = styled(Box)(() => ({
+const SignalBody = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
-  padding: '8px 10px',
-  borderRadius: 9999,
-  background: '#ffe5d5',
+  gap: 12,
+  padding: '4px 6px',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: 'none',
+  boxShadow: 'none',
+  color: theme.palette.mode === 'dark' ? '#ffffff' : theme.palette.text.primary,
 }))
 
 interface LightProps {
@@ -39,11 +42,11 @@ interface LightProps {
 const Light = styled(Box, {
   shouldForwardProp: (prop) => prop !== 'bg' && prop !== 'active',
 })<LightProps>(({ bg, active }) => ({
-  width: 20,
-  height: 20,
+  width: 32,
+  height: 32,
   borderRadius: 9999,
-  opacity: 0.4,
-  boxShadow: '0 0 0 rgba(0, 0, 0, 0)',
+  opacity: active ? 1 : 0.6,
+  boxShadow: `inset 0 0 0 2px ${alpha('#ffffff', 0.14)}`,
   background: bg,
   animation: active ? `${pulse} 1.2s ease-in-out infinite` : 'none',
 }))
@@ -57,9 +60,9 @@ function getLabel(level: SignalLevel) {
 export const AnimatedSignalLight = ({ level }: AnimatedSignalLightProps) => (
   <Box aria-label={getLabel(level)} sx={{ flexShrink: 0 }}>
     <SignalBody>
-      <Light bg="#ff6b6b" active={level === 'sell'} className="light light-red" />
-      <Light bg="#ffd166" active={level === 'hold'} className="light light-yellow" />
-      <Light bg="#52d08a" active={level === 'buy'} className="light light-green" />
+      <Light bg="#ff5f56" active={level === 'sell'} className="light light-red" />
+      <Light bg="#ffcf4a" active={level === 'hold'} className="light light-yellow" />
+      <Light bg="#2ecc71" active={level === 'buy'} className="light light-green" />
     </SignalBody>
   </Box>
 )
