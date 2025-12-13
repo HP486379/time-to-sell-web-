@@ -15,18 +15,19 @@ def clip(value: float, lower: float = 0.0, upper: float = 100.0) -> float:
     return max(lower, min(upper, value))
 
 
-def calculate_technical_score(price_history: List[Tuple[str, float]]):
+def calculate_technical_score(price_history: List[Tuple[str, float]], base_window: int = 200):
     closes = [p[1] for p in price_history]
+    base_series = moving_average(closes, base_window)
     ma200_series = moving_average(closes, 200)
     ma20_series = moving_average(closes, 20)
     ma60_series = moving_average(closes, 60)
 
-    ma200 = ma200_series[-1]
+    ma_base = base_series[-1]
     ma20 = ma20_series[-1]
     ma60 = ma60_series[-1]
     current_price = closes[-1]
 
-    d = (current_price - ma200) / ma200 * 100
+    d = (current_price - ma_base) / ma_base * 100
 
     # base score
     if d <= -20:
@@ -64,4 +65,6 @@ def calculate_technical_score(price_history: List[Tuple[str, float]]):
         "d": round(d, 2),
         "T_base": round(t_base, 2),
         "T_trend": round(t_trend, 2),
+        "base_window": base_window,
+        "ma_base": round(ma_base, 2),
     }
