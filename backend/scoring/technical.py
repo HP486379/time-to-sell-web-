@@ -17,15 +17,25 @@ def clip(value: float, lower: float = 0.0, upper: float = 100.0) -> float:
 
 def calculate_technical_score(price_history: List[Tuple[str, float]], base_window: int = 200):
     closes = [p[1] for p in price_history]
-    base_series = moving_average(closes, base_window)
-    ma200_series = moving_average(closes, 200)
-    ma20_series = moving_average(closes, 20)
-    ma60_series = moving_average(closes, 60)
 
-    ma_base = base_series[-1]
-    ma20 = ma20_series[-1]
-    ma60 = ma60_series[-1]
+    # Calculate every MA we rely on so we never reference an undefined variable
+    windows = sorted(set([20, 60, 200, base_window]))
+    ma_series = {window: moving_average(closes, window) for window in windows}
+
+    def latest_ma(window: int) -> float:
+        return ma_series[window][-1]
+
+    ma_base = latest_ma(base_window)
     current_price = closes[-1]
+
+    # Align the trend check with the ordered MA set (short/mid/long)
+    short_window, mid_window, long_window = windows[0], windows[1], windows[-1]
+    ma_short_series = ma_series[short_window]
+    ma_mid_series = ma_series[mid_window]
+    ma_long_series = ma_series[long_window]
+    ma_short = ma_short_series[-1]
+    ma_mid = ma_mid_series[-1]
+    ma_long = ma_long_series[-1]
 
     d = (current_price - ma_base) / ma_base * 100
 
@@ -52,9 +62,9 @@ def calculate_technical_score(price_history: List[Tuple[str, float]], base_windo
             return False
         return series[-1] < series[-20]
 
-    if ma20 > ma60 > ma200 and is_increasing(ma20_series[-20:]):
+    if ma_short > ma_mid > ma_long and is_increasing(ma_short_series[-20:]):
         t_trend = 10
-    elif ma20 < ma60 < ma200 and is_decreasing(ma20_series[-20:]):
+    elif ma_short < ma_mid < ma_long and is_decreasing(ma_short_series[-20:]):
         t_trend = -10
     else:
         t_trend = 0

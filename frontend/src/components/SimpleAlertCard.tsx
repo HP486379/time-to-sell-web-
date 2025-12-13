@@ -9,8 +9,6 @@ interface Props {
   scores?: {
     total: number
   }
-  marketValue?: number
-  pnl?: number
   highlights?: { icon: string; text: string }[]
   zoneText?: string
   onShowDetails: () => void
@@ -84,8 +82,6 @@ const getScoreZoneText = (score?: number) => {
 
 function SimpleAlertCard({
   scores,
-  marketValue,
-  pnl,
   highlights = [],
   zoneText,
   onShowDetails,
@@ -99,13 +95,6 @@ function SimpleAlertCard({
   const borderColor = isDark ? 'rgba(255,255,255,0.08)' : alpha(theme.palette.text.primary, 0.1)
   const textPrimary = isDark ? '#ffffff' : 'rgba(0, 0, 0, 0.85)'
   const textSecondary = isDark ? '#d2d2d2' : 'rgba(0, 0, 0, 0.75)'
-  const costBasis = marketValue !== undefined && pnl !== undefined ? marketValue - pnl : undefined
-  const pnlPct = costBasis && costBasis !== 0 ? (pnl! / costBasis) * 100 : null
-  const jpyFormatter = new Intl.NumberFormat('ja-JP', {
-    style: 'currency',
-    currency: 'JPY',
-    maximumFractionDigits: 0,
-  })
   const signalLevel: SignalLevel = scores?.total === undefined
     ? 'hold'
     : scores.total >= 70
@@ -148,26 +137,6 @@ function SimpleAlertCard({
           <Typography variant="body2" color={textSecondary}>
             {zoneText ?? getScoreZoneText(scores?.total)}
           </Typography>
-          {pnl !== undefined && marketValue !== undefined && (
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                backgroundColor: alpha(theme.palette.background.default, 0.35),
-                border: `1px dashed ${alpha(theme.palette.text.primary, 0.2)}`,
-              }}
-            >
-              <Tooltip title={tooltips.simple.pnl} arrow>
-                <Typography variant="body2" color={textSecondary} gutterBottom>
-                  あなたの今の含み損益
-                </Typography>
-              </Tooltip>
-              <Typography variant="h6" color={pnl >= 0 ? 'primary.main' : 'error.main'}>
-                {jpyFormatter.format(pnl)}
-                {pnlPct !== null && isFinite(pnlPct) && ` （${pnlPct.toFixed(1)}%）`}
-              </Typography>
-            </Box>
-          )}
           {highlights.length > 0 && (
             <Box
               sx={{
