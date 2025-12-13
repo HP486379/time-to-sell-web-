@@ -25,20 +25,13 @@ const pulse = keyframes`
 const SignalBody = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: 10,
-  padding: '10px 14px',
-  minWidth: 96,
+  gap: 12,
+  padding: '4px 6px',
   justifyContent: 'center',
-  borderRadius: 9999,
-  background: theme.palette.mode === 'dark' ? '#1f2633' : '#ffefe3',
-  border:
-    theme.palette.mode === 'dark'
-      ? '1px solid rgba(255,255,255,0.08)'
-      : '1px solid rgba(0,0,0,0.06)',
-  boxShadow:
-    theme.palette.mode === 'dark'
-      ? '0 8px 20px rgba(0, 0, 0, 0.35)'
-      : '0 6px 16px rgba(0, 0, 0, 0.08)',
+  background: 'transparent',
+  border: 'none',
+  boxShadow: 'none',
+  color: theme.palette.mode === 'dark' ? '#ffffff' : theme.palette.text.primary,
 }))
 
 interface LightProps {
@@ -49,8 +42,8 @@ interface LightProps {
 const Light = styled(Box, {
   shouldForwardProp: (prop) => prop !== 'bg' && prop !== 'active',
 })<LightProps>(({ bg, active }) => ({
-  width: 28,
-  height: 28,
+  width: 32,
+  height: 32,
   borderRadius: 9999,
   opacity: active ? 1 : 0.6,
   boxShadow: `inset 0 0 0 2px ${alpha('#ffffff', 0.14)}`,
