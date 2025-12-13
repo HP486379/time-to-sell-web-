@@ -130,17 +130,12 @@ function SimpleAlertCard({
               シンプル・アラート
             </Typography>
           </Tooltip>
-          <Stack direction="row" alignItems="center" spacing={2.5}>
+          <Stack direction="row" alignItems="center" spacing={2.25}>
             <AnimatedSignalLight level={signalLevel} />
-            <Stack spacing={0.5} flex={1}>
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <Typography variant="h3" component="span">
-                  {alert.icon}
-                </Typography>
-                <Typography variant="h6" fontWeight={700} color={textPrimary}>
-                  {alert.title}
-                </Typography>
-              </Stack>
+            <Stack spacing={0.75} flex={1}>
+              <Typography variant="h6" fontWeight={700} color={textPrimary}>
+                {alert.title}
+              </Typography>
               <Typography variant="body2" color={textSecondary}>
                 {alert.reaction}
               </Typography>
