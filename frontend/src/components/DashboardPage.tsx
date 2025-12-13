@@ -55,6 +55,7 @@ const defaultRequest: EvaluateRequest = {
   total_quantity: 77384,
   avg_cost: 21458,
   index_type: 'SP500',
+  score_ma: 200,
 }
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
@@ -156,6 +157,10 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     }
   }
 
+  const handleScoreMaChange = (value: number) => {
+    fetchEvaluation(indexType, { score_ma: value }, true)
+  }
+
   const fetchAll = () => {
     const targets: IndexType[] = (() => {
       if (indexType === 'ORUKAN' || indexType === 'orukan_jpy') return ['ORUKAN', 'orukan_jpy']
@@ -228,6 +233,23 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             ))}
           </Select>
         </FormControl>
+        {displayMode === 'pro' && (
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="score-ma-select-label">スコア算出MA</InputLabel>
+            <Select
+              labelId="score-ma-select-label"
+              value={lastRequest.score_ma}
+              label="スコア算出MA"
+              onChange={(e) => handleScoreMaChange(Number(e.target.value))}
+            >
+              {[20, 60, 200].map((ma) => (
+                <MenuItem key={ma} value={ma}>
+                  {ma}日
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
         <Box display="flex" alignItems="center" gap={1}>
           <Chip label={`最終更新: ${lastUpdatedLabel}`} size="small" />
           <Tooltip title="最新データを取得" arrow>
@@ -245,8 +267,6 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                 <Stack spacing={2}>
                   <SimpleAlertCard
                     scores={response?.scores}
-                    marketValue={response?.market_value}
-                    pnl={response?.unrealized_pnl}
                     highlights={highlights}
                     zoneText={zoneText}
                     onShowDetails={() => setShowDetails((prev) => !prev)}
@@ -394,33 +414,37 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         </Grid>
       </Grid>
 
-      <Box position="fixed" bottom={24} right={24} zIndex={(theme) => theme.zIndex.tooltip}>
-        <Tooltip title="あなたのポジションで試算（任意）" arrow>
-          <Button variant="contained" color="secondary" onClick={() => setPositionDialogOpen(true)}>
-            マイポジ試算（任意）
-          </Button>
-        </Tooltip>
-      </Box>
+      {displayMode === 'pro' && (
+        <>
+          <Box position="fixed" bottom={24} right={24} zIndex={(theme) => theme.zIndex.tooltip}>
+            <Tooltip title="あなたのポジションで試算（任意）" arrow>
+              <Button variant="contained" color="secondary" onClick={() => setPositionDialogOpen(true)}>
+                マイポジ試算（任意）
+              </Button>
+            </Tooltip>
+          </Box>
 
-      <Dialog open={positionDialogOpen} onClose={() => setPositionDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>マイポジ試算</DialogTitle>
-        <DialogContent dividers>
-          <PositionForm
-            onSubmit={(req) => {
-              fetchEvaluation(indexType, req, true)
-              setPositionDialogOpen(false)
-            }}
-            marketValue={response?.market_value}
-            pnl={response?.unrealized_pnl}
-            syntheticNav={syntheticNav}
-            fundNav={fundNav}
-            tooltips={tooltipTexts}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPositionDialogOpen(false)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
+          <Dialog open={positionDialogOpen} onClose={() => setPositionDialogOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>マイポジ試算</DialogTitle>
+            <DialogContent dividers>
+              <PositionForm
+                onSubmit={(req) => {
+                  fetchEvaluation(indexType, req, true)
+                  setPositionDialogOpen(false)
+                }}
+                marketValue={response?.market_value}
+                pnl={response?.unrealized_pnl}
+                syntheticNav={syntheticNav}
+                fundNav={fundNav}
+                tooltips={tooltipTexts}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPositionDialogOpen(false)}>閉じる</Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </Stack>
   )
 }
@@ -689,8 +713,7 @@ function getAvatarLevel(score?: number): 'strong-sell' | 'sell' | 'hold' | 'buy'
 function buildHighlights(response: EvaluateResponse | null): { icon: string; text: string }[] {
   if (!response) return []
   const highlights: { icon: string; text: string }[] = []
-  const { technical_details: technical, macro_details: macro, event_details: event, unrealized_pnl, market_value } = response
-  const formatter = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
+  const { technical_details: technical, macro_details: macro, event_details: event } = response
 
   if (technical?.d !== undefined) {
     if (technical.d >= 15) {
@@ -721,24 +744,6 @@ function buildHighlights(response: EvaluateResponse | null): { icon: string; tex
     })
   } else {
     highlights.push({ icon: '📆', text: '直近で特別に大きなイベントは予定されていません。' })
-  }
-
-  if (unrealized_pnl !== undefined && market_value !== undefined) {
-    const costBasis = market_value - unrealized_pnl
-    const ratio = costBasis ? (unrealized_pnl / costBasis) * 100 : 0
-    if (unrealized_pnl > 0) {
-      highlights.push({
-        icon: '💰',
-        text: `現在の含み益はおよそ ${formatter.format(unrealized_pnl)}（${ratio.toFixed(1)}%）です。`,
-      })
-    } else if (unrealized_pnl < 0) {
-      highlights.push({
-        icon: '📊',
-        text: `現在の含み損はおよそ ${formatter.format(unrealized_pnl)}（${ratio.toFixed(1)}%）です。`,
-      })
-    } else {
-      highlights.push({ icon: '⚖️', text: '現在の含み損益はほぼプラスマイナスゼロです。' })
-    }
   }
 
   return highlights.slice(0, 4)
