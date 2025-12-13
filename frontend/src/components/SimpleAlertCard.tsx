@@ -1,4 +1,5 @@
 import { Card, CardContent, Stack, Typography, Box, Button, useTheme, alpha, Tooltip, Divider } from '@mui/material'
+import { darken } from '@mui/material/styles'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import type { TooltipTexts } from '../tooltipTexts'
 import type { SimpleAlertLevel } from './UridokiKunAvatar'
@@ -94,10 +95,10 @@ function SimpleAlertCard({
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
   const alert = getAlert(scores?.total)
-  const cardBackground = isDark ? '#2b2f38' : alert.color
+  const cardBackground = isDark ? '#2b2f38' : darken(alert.color, 0.04)
   const borderColor = isDark ? 'rgba(255,255,255,0.08)' : alpha(theme.palette.text.primary, 0.1)
-  const textPrimary = isDark ? '#ffffff' : theme.palette.text.primary
-  const textSecondary = isDark ? '#d2d2d2' : theme.palette.text.secondary
+  const textPrimary = isDark ? '#ffffff' : 'rgba(0, 0, 0, 0.85)'
+  const textSecondary = isDark ? '#d2d2d2' : 'rgba(0, 0, 0, 0.75)'
   const costBasis = marketValue !== undefined && pnl !== undefined ? marketValue - pnl : undefined
   const pnlPct = costBasis && costBasis !== 0 ? (pnl! / costBasis) * 100 : null
   const jpyFormatter = new Intl.NumberFormat('ja-JP', {
