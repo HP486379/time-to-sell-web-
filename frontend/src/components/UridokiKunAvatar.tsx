@@ -18,10 +18,10 @@ const positionMap: Record<SimpleAlertLevel, string> = {
 }
 
 const levelLabels: Record<SimpleAlertLevel, string> = {
-  'strong-sell': '強い売り時',
-  sell: '売り寄り',
-  hold: 'ホールド',
-  buy: '買い増し寄り',
+  'strong-sell': '利確を強く推奨',
+  sell: '利確検討',
+  hold: '様子見',
+  buy: '保有・買い増し寄り',
 }
 
 export const UridokiKunAvatar: React.FC<Props> = ({

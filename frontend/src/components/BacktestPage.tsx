@@ -28,6 +28,7 @@ const DEFAULT_REQUEST: BacktestRequest = {
   sell_threshold: 80,
   buy_threshold: 40,
   index_type: 'SP500',
+  score_ma: 200,
 }
 
 const currencyFmt = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
@@ -142,6 +143,21 @@ export function BacktestPage() {
                   value={params.buy_threshold}
                   onChange={(e) => handleChange('buy_threshold', Number(e.target.value))}
                 />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="score-ma-select">スコア算出MA</InputLabel>
+                  <Select
+                    labelId="score-ma-select"
+                    value={params.score_ma}
+                    label="スコア算出MA"
+                    onChange={(e) => handleChange('score_ma', Number(e.target.value))}
+                  >
+                    <MenuItem value={20}>20日（短期・2〜6週間）</MenuItem>
+                    <MenuItem value={60}>60日（中期・1〜3か月）</MenuItem>
+                    <MenuItem value={200}>200日（長期・3か月〜1年）</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <Button variant="contained" onClick={handleRun} disabled={loading}>

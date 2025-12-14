@@ -11,6 +11,7 @@ const DEFAULT_REQUEST = {
   sell_threshold: 80,
   buy_threshold: 40,
   index_type: 'SP500' as const,
+  score_ma: 200,
 }
 
 const currencyFmt = new Intl.NumberFormat('ja-JP', {
