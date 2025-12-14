@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
 import logging
 from enum import Enum
@@ -120,6 +120,12 @@ event_service = EventService()
 nav_service = FundNavService()
 backtest_service = BacktestService(market_service, macro_service, event_service)
 
+JST = timezone(timedelta(hours=9))
+
+
+def to_jst_iso(value: date) -> str:
+    return datetime.combine(value, time.min, tzinfo=JST).isoformat()
+
 _cache_ttl = timedelta(seconds=60)
 _cached_snapshot = {}
 _cached_at: dict[str, datetime] = {}
@@ -170,8 +176,8 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
             "name": e.get("name"),
             "source": "local heuristic calendar (FOMC=3rd Wed, CPI=around 10th, NFP=1st Fri)",
             "raw_date": str(e.get("date")),
-            "parsed_iso": getattr(e.get("date"), "isoformat", lambda: "?")(),
-            "display_jst": f"{getattr(e.get('date'), 'isoformat', lambda: '?')()} (JST)",
+            "parsed_iso": to_jst_iso(e.get("date")),
+            "display_jst": f"{to_jst_iso(e.get('date'))} (JST)",
         }
         for e in events
     ]
@@ -186,7 +192,7 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
     if effective_event:
         iso_effective_event = {
             **effective_event,
-            "date": effective_event["date"].isoformat(),
+            "date": to_jst_iso(effective_event["date"]),
             "source": "local heuristic calendar",
         }
 
@@ -208,8 +214,9 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
             "events": [
                 {
                     **e,
-                    "date": getattr(e.get("date"), "isoformat", lambda: "?")(),
+                    "date": to_jst_iso(e.get("date")),
                     "source": "local heuristic calendar",
+                    "timezone": "Asia/Tokyo",
                 }
                 for e in events
             ],

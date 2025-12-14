@@ -1,7 +1,6 @@
 import { alpha, Box } from '@mui/material'
 import { keyframes, styled } from '@mui/material/styles'
-
-export type SignalLevel = 'buy' | 'hold' | 'sell'
+import type { SignalLevel } from '../utils/alertState'
 
 interface AnimatedSignalLightProps {
   level: SignalLevel

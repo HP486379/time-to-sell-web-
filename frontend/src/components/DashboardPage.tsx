@@ -43,6 +43,7 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
+import { getAlertState, getScoreZoneText } from '../utils/alertState'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -192,6 +193,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
 
+  const alertState = useMemo(() => getAlertState(response?.scores?.total), [response?.scores?.total])
+
   const { chartSeries, totalReturnLabels, legendLabels } = useMemo(
     () =>
       buildChartState({
@@ -315,7 +318,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             }}
           >
             <Box textAlign="center">
-              <UridokiKunAvatar level={getAvatarLevel(response?.scores?.total)} size={220} animated />
+              <UridokiKunAvatar level={alertState.level} size={220} animated />
               <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
                 売り時くん
               </Typography>
@@ -702,23 +705,6 @@ function getBaseIndex(indexType: IndexType): IndexType | null {
 
 function roundToTwo(value: number): number {
   return Math.round(value * 100) / 100
-}
-
-function getScoreZoneText(score?: number) {
-  if (score === undefined) return 'スコアの計算中です。'
-  if (score >= 80) return '現在のスコアは「かなり高い水準」です。'
-  if (score >= 60) return '現在のスコアは「やや高めの水準」です。'
-  if (score >= 40) return '現在のスコアは「平均的な水準」です。'
-  if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
-  return '現在のスコアは「かなり低い水準」です。'
-}
-
-function getAvatarLevel(score?: number): 'strong-sell' | 'sell' | 'hold' | 'buy' {
-  if (score === undefined) return 'hold'
-  if (score >= 80) return 'strong-sell'
-  if (score >= 60) return 'sell'
-  if (score >= 40) return 'hold'
-  return 'buy'
 }
 
 function buildHighlights(response: EvaluateResponse | null): { icon: string; text: string }[] {
