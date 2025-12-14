@@ -1,27 +1,26 @@
 import React from 'react'
-
-export type SimpleAlertLevel = 'strong-sell' | 'sell' | 'hold' | 'buy'
+import type { AlertLevel } from '../utils/alertState'
 
 interface Props {
-  level: SimpleAlertLevel
+  level: AlertLevel
   size?: number
   animated?: boolean
   label?: string
   spriteUrl?: string
 }
 
-const positionMap: Record<SimpleAlertLevel, string> = {
+const positionMap: Record<AlertLevel, string> = {
   'strong-sell': '0% 0%',
   sell: '100% 0%',
   hold: '0% 100%',
   buy: '100% 100%',
 }
 
-const levelLabels: Record<SimpleAlertLevel, string> = {
-  'strong-sell': '強い売り時',
-  sell: '売り寄り',
-  hold: 'ホールド',
-  buy: '買い増し寄り',
+const levelLabels: Record<AlertLevel, string> = {
+  'strong-sell': '利確を強く推奨',
+  sell: '利確検討',
+  hold: '様子見',
+  buy: '保有・買い増し寄り',
 }
 
 export const UridokiKunAvatar: React.FC<Props> = ({
