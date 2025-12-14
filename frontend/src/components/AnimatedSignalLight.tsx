@@ -79,18 +79,18 @@ const Light = styled(Box, {
 }))
 
 function getLabel(level: SignalLevel) {
-  if (level === 'sell') return '売りシグナル'
-  if (level === 'buy') return '買いシグナル'
-  return 'ホールドシグナル'
+  if (level === 'sell') return '利確シグナル'
+  if (level === 'buy') return '保有シグナル'
+  return '様子見シグナル'
 }
 
 export const AnimatedSignalLight = ({ level }: AnimatedSignalLightProps) => (
   <Box aria-label={getLabel(level)} sx={{ flexShrink: 0 }}>
     <SignalHousing>
       <SignalBody>
-        <Light bg="#ff4f4f" active={level === 'sell'} className="light light-red" />
+        <Light bg="#ff4f4f" active={level === 'buy'} className="light light-red" />
         <Light bg="#f4c542" active={level === 'hold'} className="light light-yellow" />
-        <Light bg="#2ecc71" active={level === 'buy'} className="light light-green" />
+        <Light bg="#2ecc71" active={level === 'sell'} className="light light-green" />
       </SignalBody>
     </SignalHousing>
   </Box>

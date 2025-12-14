@@ -217,9 +217,9 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const scoreMaLabel = displayMode === 'simple' ? '売買の目安（期間）' : 'スコア算出MA'
   const scoreMaOptions = [
-    { value: 20, label: '20日（短期）' },
-    { value: 60, label: '60日（中期）' },
-    { value: 200, label: '200日（長期）' },
+    { value: 20, labelSimple: '短期（2〜6週間）', labelPro: '20日（短期・2〜6週間）' },
+    { value: 60, labelSimple: '中期（1〜3か月）', labelPro: '60日（中期・1〜3か月）' },
+    { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
   ]
 
   return (
@@ -249,15 +249,15 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             label={scoreMaLabel}
             onChange={(e) => handleScoreMaChange(Number(e.target.value))}
           >
-            {scoreMaOptions.map(({ value, label }) => (
+            {scoreMaOptions.map(({ value, labelSimple, labelPro }) => (
               <MenuItem key={value} value={value}>
-                {label}
+                {displayMode === 'simple' ? labelSimple : labelPro}
               </MenuItem>
             ))}
           </Select>
           {displayMode === 'simple' && (
             <FormHelperText sx={{ whiteSpace: 'nowrap' }}>
-              この期間（日数）を目安に売却タイミングを計算します
+              この期間を目安に利確タイミングを計算します（短期は反応早め、長期はゆったり）
             </FormHelperText>
           )}
         </FormControl>

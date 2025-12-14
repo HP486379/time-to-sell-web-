@@ -30,44 +30,44 @@ const getAlert = (score = 0): AlertLevel => {
   if (score >= 80) {
     return {
       level: 'strong-sell',
-      title: 'かなり売り時です',
-      message: '株価が長期平均よりかなり高く、金利やインフレも高めの状態です。大きめの調整が入る可能性もあります。',
-      color: '#FFE5E5',
-      icon: '⚠️',
-      face: '(；ﾟДﾟ)',
-      reaction: '今売らんで、いつ売るんですかレベルです…！',
+      title: '利確してOKな水準です',
+      message: '株価は長期平均より大きく上振れています。利益確定を積極的に検討できるゾーンです。',
+      color: '#E4F6E8',
+      icon: '🟢',
+      face: '😄',
+      reaction: 'いまが利確チャンス。どこで収穫するか作戦会議しましょう。',
     }
   }
   if (score >= 60) {
     return {
       level: 'sell',
-      title: 'そろそろ一部売ってもよさそうです',
-      message: '株価はやや高めで、今後の値動き次第では調整する可能性もあります。',
-      color: '#FFEAD6',
-      icon: '🟧',
-      face: '😅',
-      reaction: 'ちょっとホクホクしてきました。一部だけポケットに入れてもいいかも。',
+      title: '利益確定を検討できそうです',
+      message: '株価は平均よりやや高め。部分的な利確やポジション整理を考えられるゾーンです。',
+      color: '#F0F5E3',
+      icon: '🟢',
+      face: '🙂',
+      reaction: '好調モード。少しだけ利益を確保しておくのも手です。',
     }
   }
   if (score >= 40) {
     return {
       level: 'hold',
       title: '今は様子見で大丈夫です',
-      message: '株価と景気のバランスは平均的で、急いで動く局面ではありません。',
-      color: '#E6F0FF',
-      icon: '🟦',
+      message: '株価と環境は平均的。慌てず動向を見守るフェーズです。',
+      color: '#FFF7E0',
+      icon: '🟡',
       face: '( ˘ω˘ )',
-      reaction: '今は静観タイム。お茶でも飲みながら見守りましょう。',
+      reaction: '穏やかなレンジ。タイミングを待ちましょう。',
     }
   }
   return {
     level: 'buy',
-    title: 'まだ売り時ではありません',
-    message: '株価が割安寄りで、長期投資では保有や買い増しも検討できる状態です。',
-    color: '#E4F6E8',
-    icon: '🟩',
-    face: '😎',
-    reaction: '“バーゲンコーナー”の前を通りかかったぐらいの感じです。',
+    title: 'まだ売らずに保有寄りです',
+    message: '株価は割安寄り。中長期ではホールドや買い増しで育てる局面です。',
+    color: '#F7E6E6',
+    icon: '🔴',
+    face: '😌',
+    reaction: '熟成中のゾーン。じっくり寝かせて育てましょう。',
   }
 }
 

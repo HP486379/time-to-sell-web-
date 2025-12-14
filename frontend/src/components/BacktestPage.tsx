@@ -153,11 +153,9 @@ export function BacktestPage() {
                     label="スコア算出MA"
                     onChange={(e) => handleChange('score_ma', Number(e.target.value))}
                   >
-                    {[20, 60, 200].map((ma) => (
-                      <MenuItem key={ma} value={ma}>
-                        {ma}日
-                      </MenuItem>
-                    ))}
+                    <MenuItem value={20}>20日（短期・2〜6週間）</MenuItem>
+                    <MenuItem value={60}>60日（中期・1〜3か月）</MenuItem>
+                    <MenuItem value={200}>200日（長期・3か月〜1年）</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
