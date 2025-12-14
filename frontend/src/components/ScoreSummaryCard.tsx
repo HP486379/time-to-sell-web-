@@ -1,5 +1,6 @@
 import { Card, CardContent, Typography, LinearProgress, Stack, Box, alpha, useTheme, Tooltip } from '@mui/material'
 import type { TooltipTexts } from '../tooltipTexts'
+import { getScoreZoneText } from '../utils/alertState'
 
 interface ScoreSummaryCardProps {
   scores?: {
@@ -66,15 +67,6 @@ function ScoreSummaryCard({ scores, technical, macro, tooltips }: ScoreSummaryCa
       </CardContent>
     </Card>
   )
-}
-
-const getScoreZoneText = (score?: number) => {
-  if (score === undefined) return 'スコアの計算中です。'
-  if (score >= 80) return '現在のスコアは「かなり高い水準」です。'
-  if (score >= 60) return '現在のスコアは「やや高めの水準」です。'
-  if (score >= 40) return '現在のスコアは「平均的な水準」です。'
-  if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
-  return '現在のスコアは「かなり低い水準」です。'
 }
 
 function LabelBar({
