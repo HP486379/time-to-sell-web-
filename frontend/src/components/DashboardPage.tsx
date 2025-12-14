@@ -42,6 +42,7 @@ import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
+import type { ScoreMaDays } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
 import { getAlertState, getScoreZoneText } from '../utils/alertState'
 
@@ -318,7 +319,12 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             }}
           >
             <Box textAlign="center">
-              <UridokiKunAvatar decision={alertState.decision} size={220} animated />
+              <UridokiKunAvatar
+                decision={alertState.decision}
+                scoreMaDays={lastRequest.score_ma as ScoreMaDays}
+                size={220}
+                animated
+              />
               <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
                 売り時くん
               </Typography>
