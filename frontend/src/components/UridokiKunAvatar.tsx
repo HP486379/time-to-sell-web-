@@ -1,50 +1,47 @@
 import React from 'react'
-
-export type SimpleAlertLevel = 'strong-sell' | 'sell' | 'hold' | 'buy'
+import type { Decision } from '../domain/decision'
 
 interface Props {
-  level: SimpleAlertLevel
+  decision: Decision
   size?: number
   animated?: boolean
   label?: string
   spriteUrl?: string
 }
 
-const positionMap: Record<SimpleAlertLevel, string> = {
-  'strong-sell': '0% 0%',
-  sell: '100% 0%',
-  hold: '0% 100%',
-  buy: '100% 100%',
+const positionMap: Record<Decision, string> = {
+  TAKE_PROFIT: '0% 0%',
+  WAIT: '0% 100%',
+  HOLD_OR_BUY: '100% 100%',
 }
 
-const levelLabels: Record<SimpleAlertLevel, string> = {
-  'strong-sell': '強い売り時',
-  sell: '売り寄り',
-  hold: 'ホールド',
-  buy: '買い増し寄り',
+const levelLabels: Record<Decision, string> = {
+  TAKE_PROFIT: '利確モード',
+  WAIT: '様子見モード',
+  HOLD_OR_BUY: '保有・買い増し寄り',
 }
 
 export const UridokiKunAvatar: React.FC<Props> = ({
-  level,
+  decision,
   size = 96,
   animated = false,
   label,
   spriteUrl,
   }) => {
-    const ariaLabel = label ?? levelLabels[level]
+    const ariaLabel = label ?? levelLabels[decision]
     const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
     const envSprite = (import.meta.env.VITE_URIDOKI_SPRITE as string | undefined) ?? undefined
     const defaultSprite = '/assets/uridoki-kun-sprite.png'
     const resolvedUrl = spriteUrl ?? envSprite ?? defaultSprite
   return (
     <div
-      className={`uridoki-kun-avatar uridoki-kun-${level}`}
+      className={`uridoki-kun-avatar uridoki-kun-${decision}`}
       style={{
         width: size,
         height: size,
         backgroundImage: resolvedUrl ? `url(${resolvedUrl})` : fallback,
         backgroundSize: resolvedUrl ? '200% 200%' : 'cover',
-        backgroundPosition: resolvedUrl ? positionMap[level] : 'center',
+        backgroundPosition: resolvedUrl ? positionMap[decision] : 'center',
         backgroundRepeat: 'no-repeat',
         borderRadius: 16,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
