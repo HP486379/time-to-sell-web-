@@ -50,7 +50,7 @@ function SimpleAlertCard({
             </Typography>
           </Tooltip>
           <Stack direction="row" alignItems="center" spacing={2.25}>
-            <AnimatedSignalLight level={alert.signalLevel} />
+            <AnimatedSignalLight decision={alert.decision} />
             <Stack spacing={0.75} flex={1}>
               <Typography variant="h6" fontWeight={700} color={textPrimary}>
                 {alert.title}

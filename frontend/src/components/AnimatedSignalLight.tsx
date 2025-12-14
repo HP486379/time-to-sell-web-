@@ -1,9 +1,9 @@
 import { alpha, Box } from '@mui/material'
 import { keyframes, styled } from '@mui/material/styles'
-import type { SignalLevel } from '../utils/alertState'
+import type { Decision } from '../domain/decision'
 
 interface AnimatedSignalLightProps {
-  level: SignalLevel
+  decision: Decision
 }
 
 const pulse = keyframes`
@@ -77,19 +77,19 @@ const Light = styled(Box, {
   animation: active ? `${pulse} 1.2s ease-in-out infinite` : 'none',
 }))
 
-function getLabel(level: SignalLevel) {
-  if (level === 'sell') return '利確シグナル'
-  if (level === 'buy') return '保有シグナル'
+function getLabel(decision: Decision) {
+  if (decision === 'TAKE_PROFIT') return '利確シグナル'
+  if (decision === 'HOLD_OR_BUY') return '保有シグナル'
   return '様子見シグナル'
 }
 
-export const AnimatedSignalLight = ({ level }: AnimatedSignalLightProps) => (
-  <Box aria-label={getLabel(level)} sx={{ flexShrink: 0 }}>
+export const AnimatedSignalLight = ({ decision }: AnimatedSignalLightProps) => (
+  <Box aria-label={getLabel(decision)} sx={{ flexShrink: 0 }}>
     <SignalHousing>
       <SignalBody>
-        <Light bg="#ff4f4f" active={level === 'buy'} className="light light-red" />
-        <Light bg="#f4c542" active={level === 'hold'} className="light light-yellow" />
-        <Light bg="#2ecc71" active={level === 'sell'} className="light light-green" />
+        <Light bg="#ff4f4f" active={decision === 'HOLD_OR_BUY'} className="light light-red" />
+        <Light bg="#f4c542" active={decision === 'WAIT'} className="light light-yellow" />
+        <Light bg="#2ecc71" active={decision === 'TAKE_PROFIT'} className="light light-green" />
       </SignalBody>
     </SignalHousing>
   </Box>

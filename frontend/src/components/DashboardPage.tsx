@@ -218,10 +218,10 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     }
   }, [startOption, customStart, priceSeries])
 
-  const scoreMaLabel = displayMode === 'simple' ? '売買の目安（期間）' : 'スコア算出MA'
+  const scoreMaLabel = displayMode === 'simple' ? '売りの目安（期間）' : 'スコア算出MA'
   const scoreMaOptions = [
     { value: 20, labelSimple: '短期（2〜6週間）', labelPro: '20日（短期・2〜6週間）' },
-    { value: 60, labelSimple: '中期（1〜3か月）', labelPro: '60日（中期・1〜3か月）' },
+    { value: 60, labelSimple: '中期（2〜3か月）', labelPro: '60日（中期・2〜3か月）' },
     { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
   ]
 
@@ -318,7 +318,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             }}
           >
             <Box textAlign="center">
-              <UridokiKunAvatar level={alertState.level} size={220} animated />
+              <UridokiKunAvatar decision={alertState.decision} size={220} animated />
               <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
                 売り時くん
               </Typography>
