@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Decision } from '../domain/decision'
-import { maAvatarAltLabel, maAvatarMap, type ScoreMaDays } from '../constants/maAvatarMap'
+import { DEFAULT_AVATAR_ALT, DEFAULT_AVATAR_SPRITE } from '../constants/maAvatarMap'
 
 interface Props {
   decision: Decision
@@ -29,15 +29,12 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   animated = false,
   label,
   spriteUrl,
-  scoreMaDays,
 }) => {
   const padding = Math.max(8, Math.round(size * 0.08))
-  const ariaLabel = label ?? (scoreMaDays ? maAvatarAltLabel[scoreMaDays] : levelLabels[decision])
+  const ariaLabel = label ?? DEFAULT_AVATAR_ALT ?? levelLabels[decision]
   const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
-  const envSprite = (import.meta.env.VITE_URIDOKI_SPRITE as string | undefined) ?? undefined
-  const mappedSprite = scoreMaDays ? maAvatarMap[scoreMaDays] : undefined
-  const defaultSprite = '/assets/uridoki-kun-sprite.png'
-  const resolvedUrl = spriteUrl ?? mappedSprite ?? envSprite ?? defaultSprite
+  const resolvedUrl = spriteUrl ?? DEFAULT_AVATAR_SPRITE
+
   return (
     <div
       className={`uridoki-kun-avatar uridoki-kun-${decision}`}

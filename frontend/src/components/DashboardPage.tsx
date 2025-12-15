@@ -43,7 +43,7 @@ import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
-import { maAvatarAltLabel, maAvatarMap, type ScoreMaDays } from '../constants/maAvatarMap'
+import { DEFAULT_AVATAR_ALT, DEFAULT_AVATAR_SPRITE, type ScoreMaDays } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
 import { getAlertState, getScoreZoneText } from '../utils/alertState'
 import TimeHorizonScale from './TimeHorizonScale'
@@ -103,8 +103,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const response = responses[indexType] ?? null
   const priceSeries = priceSeriesMap[indexType] ?? []
-  const avatarSpriteUrl = maAvatarMap[20]
-  const avatarAltLabel = maAvatarAltLabel[20]
+  const avatarSpriteUrl = DEFAULT_AVATAR_SPRITE
+  const avatarAltLabel = DEFAULT_AVATAR_ALT
 
   const fetchEvaluation = async (
     targetIndex: IndexType,
@@ -365,7 +365,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                     {`${maPersona.label}視点（${maPersona.duration}）で見ています`}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                    ※現在は短期（MA20）基準のキャラ表示です
+                    ※現在は標準スプライト（MA60相当）で固定表示しています
                   </Typography>
                 </Box>
                 <Box
