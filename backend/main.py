@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
 import logging
 from enum import Enum
@@ -31,6 +31,7 @@ class PositionRequest(BaseModel):
     total_quantity: float = Field(..., description="Total units held")
     avg_cost: float = Field(..., description="Average acquisition price")
     index_type: IndexType = Field(IndexType.SP500, description="Target index type")
+    score_ma: int = Field(200, description="Moving average window for score calculation")
 
 
 class PricePoint(BaseModel):
@@ -73,6 +74,7 @@ class BacktestRequest(BaseModel):
     buy_threshold: float = 40.0
     sell_threshold: float = 80.0
     index_type: IndexType = IndexType.SP500
+    score_ma: int = Field(200, description="Moving average window for score calculation")
 
 
 class Trade(BaseModel):
@@ -117,6 +119,12 @@ macro_service = MacroDataService()
 event_service = EventService()
 nav_service = FundNavService()
 backtest_service = BacktestService(market_service, macro_service, event_service)
+
+JST = timezone(timedelta(hours=9))
+
+
+def to_jst_iso(value: date) -> str:
+    return datetime.combine(value, time.min, tzinfo=JST).isoformat()
 
 _cache_ttl = timedelta(seconds=60)
 _cached_snapshot = {}
@@ -163,12 +171,30 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
     )
 
     events = event_service.get_events()
+    event_log = [
+        {
+            "name": e.get("name"),
+            "source": "local heuristic calendar (FOMC=3rd Wed, CPI=around 10th, NFP=1st Fri)",
+            "raw_date": str(e.get("date")),
+            "parsed_iso": to_jst_iso(e.get("date")),
+            "display_jst": f"{to_jst_iso(e.get('date'))} (JST)",
+        }
+        for e in events
+    ]
+    logger.info("[EVENT TRACE] %s", event_log)
     event_adjustment, event_details = calculate_event_adjustment(date.today(), events)
 
     total_score = calculate_total_score(technical_score, macro_score, event_adjustment)
     label = get_label(total_score)
 
     effective_event = event_details.get("effective_event")
+    iso_effective_event = None
+    if effective_event:
+        iso_effective_event = {
+            **effective_event,
+            "date": to_jst_iso(effective_event["date"]),
+            "source": "local heuristic calendar",
+        }
 
     snapshot = {
         "current_price": current_price,
@@ -184,8 +210,18 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
         "event_details": {
             "E_adj": event_adjustment,
             "R_max": event_details.get("R_max"),
-            "effective_event": effective_event,
+            "effective_event": iso_effective_event,
+            "events": [
+                {
+                    **e,
+                    "date": to_jst_iso(e.get("date")),
+                    "source": "local heuristic calendar",
+                    "timezone": "Asia/Tokyo",
+                }
+                for e in events
+            ],
         },
+        "price_history": price_history,
         "price_series": market_service.build_price_series_with_ma(price_history),
     }
 
@@ -246,10 +282,25 @@ def get_cached_snapshot(index_type: IndexType = IndexType.SP500):
     return _cached_snapshot[cache_key]
 
 
-@app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
-def evaluate(position: PositionRequest):
+def _evaluate(position: PositionRequest):
     snapshot = get_cached_snapshot(index_type=position.index_type)
     current_price = snapshot["current_price"]
+
+    technical_score, technical_details = calculate_technical_score(
+        snapshot["price_history"], base_window=position.score_ma
+    )
+    macro_score = snapshot["scores"]["macro"]
+    event_adjustment = snapshot["scores"]["event_adjustment"]
+    total_score = calculate_total_score(technical_score, macro_score, event_adjustment)
+    label = get_label(total_score)
+
+    scores = {
+        "technical": technical_score,
+        "macro": macro_score,
+        "event_adjustment": event_adjustment,
+        "total": total_score,
+        "label": label,
+    }
 
     market_value = position.total_quantity * current_price
     avg_cost_total = position.total_quantity * position.avg_cost
@@ -259,12 +310,22 @@ def evaluate(position: PositionRequest):
         "current_price": current_price,
         "market_value": round(market_value, 2),
         "unrealized_pnl": round(unrealized_pnl, 2),
-        "scores": snapshot["scores"],
-        "technical_details": snapshot["technical_details"],
+        "scores": scores,
+        "technical_details": technical_details,
         "macro_details": snapshot["macro_details"],
         "event_details": snapshot["event_details"],
         "price_series": snapshot["price_series"],
     }
+
+
+@app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
+def evaluate_sp500(position: PositionRequest):
+    return _evaluate(position)
+
+
+@app.post("/api/evaluate", response_model=EvaluateResponse)
+def evaluate(position: PositionRequest):
+    return _evaluate(position)
 
 
 @app.post("/api/backtest", response_model=BacktestResponse)
@@ -277,6 +338,7 @@ def backtest(payload: BacktestRequest):
             payload.buy_threshold,
             payload.sell_threshold,
             payload.index_type.value,
+            payload.score_ma,
         )
         return result
     except ValueError as exc:

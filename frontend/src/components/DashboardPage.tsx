@@ -20,7 +20,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  FormHelperText,
   TextField,
+  useTheme,
 } from '@mui/material'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -41,7 +43,12 @@ import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
+import { DEFAULT_AVATAR_ALT, DEFAULT_AVATAR_SPRITE, maAvatarAltLabel, maAvatarMap, type ScoreMaDays } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
+import { getAlertState, getScoreZoneText } from '../utils/alertState'
+import TimeHorizonScale from './TimeHorizonScale'
+import { MA_PERSONA } from '../constants/maPersona'
+import { alpha } from '@mui/material/styles'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -55,6 +62,7 @@ const defaultRequest: EvaluateRequest = {
   total_quantity: 77384,
   avg_cost: 21458,
   index_type: 'SP500',
+  score_ma: 200,
 }
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000
@@ -76,6 +84,7 @@ const chartMotion = {
 }
 
 function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
+  const theme = useTheme()
   const [responses, setResponses] = useState<Partial<Record<IndexType, EvaluateResponse>>>({})
   const [error, setError] = useState<string | null>(null)
   const [syntheticNav, setSyntheticNav] = useState<SyntheticNavResponse | null>(null)
@@ -90,7 +99,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const [positionDialogOpen, setPositionDialogOpen] = useState(false)
   const [priceSeriesMap, setPriceSeriesMap] = useState<Partial<Record<IndexType, PricePoint[]>>>({})
 
-  const tooltipTexts = useMemo(() => buildTooltips(indexType), [indexType])
+  const tooltipTexts = useMemo(() => buildTooltips(indexType, lastRequest.score_ma), [indexType, lastRequest.score_ma])
 
   const response = responses[indexType] ?? null
   const priceSeries = priceSeriesMap[indexType] ?? []
@@ -103,7 +112,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     try {
       const body = { ...lastRequest, ...(payload ?? {}), index_type: targetIndex }
       if (markPrimary) setError(null)
-      const res = await apiClient.post<EvaluateResponse>('/api/sp500/evaluate', body)
+      const res = await apiClient.post<EvaluateResponse>('/api/evaluate', body)
       setResponses((prev) => ({ ...prev, [targetIndex]: res.data }))
       if (targetIndex === indexType && payload) setLastRequest((prev) => ({ ...prev, ...payload, index_type: targetIndex }))
       if (markPrimary) setLastUpdated(new Date())
@@ -156,6 +165,10 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     }
   }
 
+  const handleScoreMaChange = (value: number) => {
+    fetchEvaluation(indexType, { score_ma: value }, true)
+  }
+
   const fetchAll = () => {
     const targets: IndexType[] = (() => {
       if (indexType === 'ORUKAN' || indexType === 'orukan_jpy') return ['ORUKAN', 'orukan_jpy']
@@ -186,6 +199,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
 
+  const alertState = useMemo(() => getAlertState(response?.scores?.total), [response?.scores?.total])
+
   const { chartSeries, totalReturnLabels, legendLabels } = useMemo(
     () =>
       buildChartState({
@@ -209,6 +224,25 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     }
   }, [startOption, customStart, priceSeries])
 
+  const scoreMaLabel = displayMode === 'simple' ? '売りの目安（期間）' : 'スコア算出MA'
+  const scoreMaOptions = [
+    { value: 20, labelSimple: '短期（2〜6週間）', labelPro: '20日（短期・2〜6週間）' },
+    { value: 60, labelSimple: '中期（2〜3か月）', labelPro: '60日（中期・2〜3か月）' },
+    { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
+  ]
+  const scoreMaDays = lastRequest.score_ma as ScoreMaDays
+  const { avatarSpriteUrl, avatarAltLabel } = useMemo(
+    () => ({
+      avatarSpriteUrl: maAvatarMap[scoreMaDays] ?? DEFAULT_AVATAR_SPRITE,
+      avatarAltLabel: maAvatarAltLabel[scoreMaDays] ?? DEFAULT_AVATAR_ALT,
+    }),
+    [scoreMaDays],
+  )
+  const maPersona = MA_PERSONA[scoreMaDays]
+  const badgeBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.8 : 0.9)
+  const badgeBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.25 : 0.12)
+  const copyBg = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.06)
+
   return (
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
@@ -228,6 +262,26 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
             ))}
           </Select>
         </FormControl>
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="score-ma-select-label">{scoreMaLabel}</InputLabel>
+          <Select
+            labelId="score-ma-select-label"
+            value={lastRequest.score_ma}
+            label={scoreMaLabel}
+            onChange={(e) => handleScoreMaChange(Number(e.target.value))}
+          >
+            {scoreMaOptions.map(({ value, labelSimple, labelPro }) => (
+              <MenuItem key={value} value={value}>
+                {displayMode === 'simple' ? labelSimple : labelPro}
+              </MenuItem>
+            ))}
+          </Select>
+          {displayMode === 'simple' && (
+            <FormHelperText sx={{ whiteSpace: 'nowrap' }}>
+              この期間を目安に利確タイミングを計算します（短期は反応早め、長期はゆったり）
+            </FormHelperText>
+          )}
+        </FormControl>
         <Box display="flex" alignItems="center" gap={1}>
           <Chip label={`最終更新: ${lastUpdatedLabel}`} size="small" />
           <Tooltip title="最新データを取得" arrow>
@@ -245,8 +299,6 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                 <Stack spacing={2}>
                   <SimpleAlertCard
                     scores={response?.scores}
-                    marketValue={response?.market_value}
-                    pnl={response?.unrealized_pnl}
                     highlights={highlights}
                     zoneText={zoneText}
                     onShowDetails={() => setShowDetails((prev) => !prev)}
@@ -274,21 +326,81 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </AnimatePresence>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Card
-            sx={{
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              p: 3,
-            }}
-          >
-            <Box textAlign="center">
-              <UridokiKunAvatar level={getAvatarLevel(response?.scores?.total)} size={220} animated />
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
-                売り時くん
-              </Typography>
-            </Box>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ height: '100%' }}>
+              <Stack spacing={2.5} alignItems="stretch" height="100%">
+                <TimeHorizonScale active={scoreMaDays} />
+                <Box textAlign="center">
+                  <Box
+                    position="relative"
+                    display="inline-flex"
+                    sx={{
+                      overflow: 'visible',
+                      width: 280,
+                      height: 280,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <UridokiKunAvatar
+                      decision={alertState.decision}
+                      spriteUrl={avatarSpriteUrl}
+                      label={avatarAltLabel}
+                      size={256}
+                      animated
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        bgcolor: badgeBg,
+                        border: `1px solid ${badgeBorder}`,
+                        borderRadius: 2,
+                        px: 1,
+                        py: 0.5,
+                        boxShadow:
+                          theme.palette.mode === 'dark'
+                            ? '0 8px 18px rgba(0,0,0,0.35)'
+                            : '0 8px 18px rgba(0,0,0,0.12)',
+                      }}
+                    >
+                      <Typography variant="body2" component="span" sx={{ display: 'inline-flex', gap: 0.25 }}>
+                        <span aria-hidden>{maPersona.icon}</span>
+                        <Box component="span" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
+                          {maPersona.label}
+                        </Box>
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+                    売り時くん
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {`${maPersona.label}視点（${maPersona.duration}）で見ています`}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                    {`${maPersona.label}（MA${scoreMaDays}）のスプライトを表示しています`}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    mt: 'auto',
+                    p: 2,
+                    borderRadius: 2,
+                    backgroundColor: copyBg,
+                    border: `1px solid ${badgeBorder}`,
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    {maPersona.copyTitle}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {maPersona.copyBody}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
           </Card>
         </Grid>
       </Grid>
@@ -394,33 +506,37 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         </Grid>
       </Grid>
 
-      <Box position="fixed" bottom={24} right={24} zIndex={(theme) => theme.zIndex.tooltip}>
-        <Tooltip title="あなたのポジションで試算（任意）" arrow>
-          <Button variant="contained" color="secondary" onClick={() => setPositionDialogOpen(true)}>
-            マイポジ試算（任意）
-          </Button>
-        </Tooltip>
-      </Box>
+      {displayMode === 'pro' && (
+        <>
+          <Box position="fixed" bottom={24} right={24} zIndex={(theme) => theme.zIndex.tooltip}>
+            <Tooltip title="あなたのポジションで試算（任意）" arrow>
+              <Button variant="contained" color="secondary" onClick={() => setPositionDialogOpen(true)}>
+                マイポジ試算（任意）
+              </Button>
+            </Tooltip>
+          </Box>
 
-      <Dialog open={positionDialogOpen} onClose={() => setPositionDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>マイポジ試算</DialogTitle>
-        <DialogContent dividers>
-          <PositionForm
-            onSubmit={(req) => {
-              fetchEvaluation(indexType, req, true)
-              setPositionDialogOpen(false)
-            }}
-            marketValue={response?.market_value}
-            pnl={response?.unrealized_pnl}
-            syntheticNav={syntheticNav}
-            fundNav={fundNav}
-            tooltips={tooltipTexts}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPositionDialogOpen(false)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
+          <Dialog open={positionDialogOpen} onClose={() => setPositionDialogOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>マイポジ試算</DialogTitle>
+            <DialogContent dividers>
+              <PositionForm
+                onSubmit={(req) => {
+                  fetchEvaluation(indexType, req, true)
+                  setPositionDialogOpen(false)
+                }}
+                marketValue={response?.market_value}
+                pnl={response?.unrealized_pnl}
+                syntheticNav={syntheticNav}
+                fundNav={fundNav}
+                tooltips={tooltipTexts}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPositionDialogOpen(false)}>閉じる</Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </Stack>
   )
 }
@@ -669,28 +785,10 @@ function roundToTwo(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-function getScoreZoneText(score?: number) {
-  if (score === undefined) return 'スコアの計算中です。'
-  if (score >= 80) return '現在のスコアは「かなり高い水準」です。'
-  if (score >= 60) return '現在のスコアは「やや高めの水準」です。'
-  if (score >= 40) return '現在のスコアは「平均的な水準」です。'
-  if (score >= 20) return '現在のスコアは「やや低めの水準」です。'
-  return '現在のスコアは「かなり低い水準」です。'
-}
-
-function getAvatarLevel(score?: number): 'strong-sell' | 'sell' | 'hold' | 'buy' {
-  if (score === undefined) return 'hold'
-  if (score >= 80) return 'strong-sell'
-  if (score >= 60) return 'sell'
-  if (score >= 40) return 'hold'
-  return 'buy'
-}
-
 function buildHighlights(response: EvaluateResponse | null): { icon: string; text: string }[] {
   if (!response) return []
   const highlights: { icon: string; text: string }[] = []
-  const { technical_details: technical, macro_details: macro, event_details: event, unrealized_pnl, market_value } = response
-  const formatter = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 })
+  const { technical_details: technical, macro_details: macro, event_details: event } = response
 
   if (technical?.d !== undefined) {
     if (technical.d >= 15) {
@@ -721,24 +819,6 @@ function buildHighlights(response: EvaluateResponse | null): { icon: string; tex
     })
   } else {
     highlights.push({ icon: '📆', text: '直近で特別に大きなイベントは予定されていません。' })
-  }
-
-  if (unrealized_pnl !== undefined && market_value !== undefined) {
-    const costBasis = market_value - unrealized_pnl
-    const ratio = costBasis ? (unrealized_pnl / costBasis) * 100 : 0
-    if (unrealized_pnl > 0) {
-      highlights.push({
-        icon: '💰',
-        text: `現在の含み益はおよそ ${formatter.format(unrealized_pnl)}（${ratio.toFixed(1)}%）です。`,
-      })
-    } else if (unrealized_pnl < 0) {
-      highlights.push({
-        icon: '📊',
-        text: `現在の含み損はおよそ ${formatter.format(unrealized_pnl)}（${ratio.toFixed(1)}%）です。`,
-      })
-    } else {
-      highlights.push({ icon: '⚖️', text: '現在の含み損益はほぼプラスマイナスゼロです。' })
-    }
   }
 
   return highlights.slice(0, 4)
