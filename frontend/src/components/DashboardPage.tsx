@@ -333,8 +333,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                     display="inline-flex"
                     sx={{
                       overflow: 'visible',
-                      width: 280,
-                      height: 280,
+                      width: 320,
+                      height: 320,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -343,7 +343,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                       decision={alertState.decision}
                       spriteUrl={avatarSpriteUrl}
                       label={avatarAltLabel}
-                      size={256}
+                      size={288}
                       animated
                     />
                     <Box

@@ -41,10 +41,10 @@ export const UridokiKunAvatar: React.FC<Props> = ({
       aria-label={ariaLabel}
       title={ariaLabel}
       style={{
-        width: totalSize,
-        height: totalSize,
-        padding,
-        boxSizing: 'border-box',
+        overflow: 'visible',
+        width: size,
+        height: size,
+        maxWidth: '100%',
         backgroundImage: resolvedUrl ? `url(${resolvedUrl})` : fallback,
         backgroundSize: resolvedUrl ? '200% 200%' : 'contain',
         backgroundPosition: resolvedUrl ? positionMap[decision] : 'center',
