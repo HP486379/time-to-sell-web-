@@ -8,6 +8,7 @@ interface Props {
   animated?: boolean
   label?: string
   spriteUrl?: string
+  scoreMaDays?: ScoreMaDays
 }
 
 const positionMap: Record<Decision, string> = {
