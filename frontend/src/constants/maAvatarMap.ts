@@ -1,17 +1,16 @@
 export type ScoreMaDays = 20 | 60 | 200
 
-export const DEFAULT_AVATAR_SPRITE = '/assets/uridoki-kun-sprite.png'
-export const DEFAULT_AVATAR_ALT = '売り時くん（標準スプライト）'
-
-// MA切り替え時もスプライトを固定するため、すべて同じ画像を参照する
 export const maAvatarMap: Record<ScoreMaDays, string> = {
-  20: DEFAULT_AVATAR_SPRITE,
-  60: DEFAULT_AVATAR_SPRITE,
-  200: DEFAULT_AVATAR_SPRITE,
+  20: '/assets/uridoki-kun-sprite_MA20.png',
+  60: '/assets/uridoki-kun-sprite_MA60.png',
+  200: '/assets/uridoki-kun-sprite_MA200.png',
 }
 
 export const maAvatarAltLabel: Record<ScoreMaDays, string> = {
-  20: DEFAULT_AVATAR_ALT,
-  60: DEFAULT_AVATAR_ALT,
-  200: DEFAULT_AVATAR_ALT,
+  20: '売り時くん（MA20スプライト）',
+  60: '売り時くん（MA60スプライト）',
+  200: '売り時くん（MA200スプライト）',
 }
+
+export const DEFAULT_AVATAR_SPRITE = maAvatarMap[60]
+export const DEFAULT_AVATAR_ALT = maAvatarAltLabel[60]

@@ -30,7 +30,7 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   label,
   spriteUrl,
 }) => {
-  const padding = Math.max(8, Math.round(size * 0.08))
+  const padding = Math.max(10, Math.round(size * 0.05))
   const ariaLabel = label ?? DEFAULT_AVATAR_ALT ?? levelLabels[decision]
   const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
   const resolvedUrl = spriteUrl ?? DEFAULT_AVATAR_SPRITE
@@ -47,7 +47,7 @@ export const UridokiKunAvatar: React.FC<Props> = ({
         backgroundSize: resolvedUrl ? '200% 200%' : 'cover',
         backgroundPosition: resolvedUrl ? positionMap[decision] : 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundOrigin: 'content-box',
+        backgroundOrigin: 'padding-box',
         borderRadius: 16,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
         overflow: 'visible',
