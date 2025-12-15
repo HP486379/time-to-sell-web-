@@ -4,12 +4,14 @@ export interface EvaluateRequest {
   total_quantity: number
   avg_cost: number
   index_type: IndexType
+  score_ma: number
 }
 
 export interface EconomicEvent {
   name: string
   importance: number
   date: string
+  source?: string
 }
 
 export interface PricePoint {
@@ -46,6 +48,7 @@ export interface EvaluateResponse {
     E_adj: number
     R_max: number
     effective_event: EconomicEvent | null
+    events?: EconomicEvent[]
   }
   price_series: PricePoint[]
 }
