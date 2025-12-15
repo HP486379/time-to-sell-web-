@@ -8,6 +8,7 @@ interface Props {
   animated?: boolean
   label?: string
   spriteUrl?: string
+  scoreMaDays?: ScoreMaDays
 }
 
 const positionMap: Record<Decision, string> = {
@@ -40,14 +41,21 @@ export const UridokiKunAvatar: React.FC<Props> = ({
       aria-label={ariaLabel}
       title={ariaLabel}
       style={{
-        width: size,
-        height: size,
+        width: totalSize,
+        height: totalSize,
+        padding,
+        boxSizing: 'border-box',
         backgroundImage: resolvedUrl ? `url(${resolvedUrl})` : fallback,
         backgroundSize: resolvedUrl ? '200% 200%' : 'contain',
         backgroundPosition: resolvedUrl ? positionMap[decision] : 'center',
         backgroundRepeat: 'no-repeat',
         borderRadius: 12,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
+        overflow: 'visible',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        objectFit: 'contain',
       }}
     />
   )
