@@ -103,6 +103,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const response = responses[indexType] ?? null
   const priceSeries = priceSeriesMap[indexType] ?? []
+  const avatarSpriteUrl = DEFAULT_AVATAR_SPRITE
+  const avatarAltLabel = DEFAULT_AVATAR_ALT
 
   const fetchEvaluation = async (
     targetIndex: IndexType,
