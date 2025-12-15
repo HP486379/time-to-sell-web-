@@ -31,6 +31,7 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   spriteUrl,
   scoreMaDays,
 }) => {
+  const padding = Math.max(8, Math.round(size * 0.08))
   const ariaLabel = label ?? (scoreMaDays ? maAvatarAltLabel[scoreMaDays] : levelLabels[decision])
   const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
   const envSprite = (import.meta.env.VITE_URIDOKI_SPRITE as string | undefined) ?? undefined
@@ -43,12 +44,19 @@ export const UridokiKunAvatar: React.FC<Props> = ({
       style={{
         width: size,
         height: size,
+        padding,
+        boxSizing: 'border-box',
         backgroundImage: resolvedUrl ? `url(${resolvedUrl})` : fallback,
         backgroundSize: resolvedUrl ? '200% 200%' : 'cover',
         backgroundPosition: resolvedUrl ? positionMap[decision] : 'center',
         backgroundRepeat: 'no-repeat',
+        backgroundOrigin: 'content-box',
         borderRadius: 16,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
+        overflow: 'visible',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
       role="img"
       aria-label={ariaLabel}

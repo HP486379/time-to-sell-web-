@@ -282,8 +282,7 @@ def get_cached_snapshot(index_type: IndexType = IndexType.SP500):
     return _cached_snapshot[cache_key]
 
 
-@app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
-def evaluate(position: PositionRequest):
+def _evaluate(position: PositionRequest):
     snapshot = get_cached_snapshot(index_type=position.index_type)
     current_price = snapshot["current_price"]
 
@@ -317,6 +316,16 @@ def evaluate(position: PositionRequest):
         "event_details": snapshot["event_details"],
         "price_series": snapshot["price_series"],
     }
+
+
+@app.post("/api/sp500/evaluate", response_model=EvaluateResponse)
+def evaluate_sp500(position: PositionRequest):
+    return _evaluate(position)
+
+
+@app.post("/api/evaluate", response_model=EvaluateResponse)
+def evaluate(position: PositionRequest):
+    return _evaluate(position)
 
 
 @app.post("/api/backtest", response_model=BacktestResponse)

@@ -112,7 +112,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     try {
       const body = { ...lastRequest, ...(payload ?? {}), index_type: targetIndex }
       if (markPrimary) setError(null)
-      const res = await apiClient.post<EvaluateResponse>('/api/sp500/evaluate', body)
+      const res = await apiClient.post<EvaluateResponse>('/api/evaluate', body)
       setResponses((prev) => ({ ...prev, [targetIndex]: res.data }))
       if (targetIndex === indexType && payload) setLastRequest((prev) => ({ ...prev, ...payload, index_type: targetIndex }))
       if (markPrimary) setLastUpdated(new Date())
