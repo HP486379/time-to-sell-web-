@@ -233,8 +233,13 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
   ]
   const scoreMaDays = lastRequest.score_ma as ScoreMaDays
-  const avatarSpriteUrl = maAvatarMap[scoreMaDays] ?? DEFAULT_AVATAR_SPRITE
-  const avatarAltLabel = maAvatarAltLabel[scoreMaDays] ?? DEFAULT_AVATAR_ALT
+  const { avatarSpriteUrl, avatarAltLabel } = useMemo(
+    () => ({
+      avatarSpriteUrl: maAvatarMap[scoreMaDays] ?? DEFAULT_AVATAR_SPRITE,
+      avatarAltLabel: maAvatarAltLabel[scoreMaDays] ?? DEFAULT_AVATAR_ALT,
+    }),
+    [scoreMaDays],
+  )
   const maPersona = MA_PERSONA[scoreMaDays]
   const badgeBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.8 : 0.9)
   const badgeBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.25 : 0.12)
@@ -328,12 +333,22 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
               <Stack spacing={2.5} alignItems="stretch" height="100%">
                 <TimeHorizonScale active={scoreMaDays} />
                 <Box textAlign="center">
-                  <Box position="relative" display="inline-flex" sx={{ overflow: 'visible' }}>
+                  <Box
+                    position="relative"
+                    display="inline-flex"
+                    sx={{
+                      overflow: 'visible',
+                      width: 280,
+                      height: 280,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <UridokiKunAvatar
                       decision={alertState.decision}
                       spriteUrl={avatarSpriteUrl}
                       label={avatarAltLabel}
-                      size={240}
+                      size={256}
                       animated
                     />
                     <Box
