@@ -30,8 +30,6 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   label,
   spriteUrl,
 }) => {
-  const padding = Math.max(12, Math.round(size * 0.08))
-  const totalSize = size + padding * 2
   const ariaLabel = label ?? DEFAULT_AVATAR_ALT ?? levelLabels[decision]
   const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
   const resolvedUrl = spriteUrl ?? DEFAULT_AVATAR_SPRITE
@@ -39,6 +37,9 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   return (
     <div
       className={`uridoki-kun-avatar uridoki-kun-${decision}`}
+      role="img"
+      aria-label={ariaLabel}
+      title={ariaLabel}
       style={{
         width: totalSize,
         height: totalSize,
@@ -48,9 +49,7 @@ export const UridokiKunAvatar: React.FC<Props> = ({
         backgroundSize: resolvedUrl ? '200% 200%' : 'contain',
         backgroundPosition: resolvedUrl ? positionMap[decision] : 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundOrigin: 'content-box',
-        backgroundClip: 'border-box',
-        borderRadius: 16,
+        borderRadius: 12,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
         overflow: 'visible',
         display: 'flex',
@@ -58,9 +57,6 @@ export const UridokiKunAvatar: React.FC<Props> = ({
         justifyContent: 'center',
         objectFit: 'contain',
       }}
-      role="img"
-      aria-label={ariaLabel}
-      title={ariaLabel}
     />
   )
 }
