@@ -8,6 +8,7 @@ interface Props {
   animated?: boolean
   label?: string
   spriteUrl?: string
+  scoreMaDays?: ScoreMaDays
 }
 
 const positionMap: Record<Decision, string> = {
@@ -50,6 +51,11 @@ export const UridokiKunAvatar: React.FC<Props> = ({
         backgroundRepeat: 'no-repeat',
         borderRadius: 12,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
+        overflow: 'visible',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        objectFit: 'contain',
       }}
     />
   )
