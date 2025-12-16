@@ -295,45 +295,49 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
         </Box>
       </Box>
       <Grid container spacing={3} alignItems="stretch">
-        <Grid item xs={12} md={8}>
-          <AnimatePresence mode="wait">
-            <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
-              {displayMode === 'simple' ? (
-                <Stack spacing={2}>
-                  <SimpleAlertCard
-                    scores={response?.scores}
-                    highlights={highlights}
-                    zoneText={zoneText}
-                    onShowDetails={() => setShowDetails((prev) => !prev)}
-                    expanded={showDetails}
-                    tooltips={tooltipTexts}
-                  />
-                  <Collapse in={showDetails}>
-                    <ScoreSummaryCard
+        <Grid item xs={12} md={7} sx={{ height: '100%' }}>
+          <Box sx={{ height: '100%' }}>
+            <AnimatePresence mode="wait">
+              <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
+                {displayMode === 'simple' ? (
+                  <Stack spacing={2} sx={{ height: '100%' }}>
+                    <SimpleAlertCard
                       scores={response?.scores}
-                      technical={response?.technical_details}
-                      macro={response?.macro_details}
+                      highlights={highlights}
+                      zoneText={zoneText}
+                      onShowDetails={() => setShowDetails((prev) => !prev)}
+                      expanded={showDetails}
                       tooltips={tooltipTexts}
                     />
-                  </Collapse>
-                </Stack>
-              ) : (
-                <ScoreSummaryCard
-                  scores={response?.scores}
-                  technical={response?.technical_details}
-                  macro={response?.macro_details}
-                  tooltips={tooltipTexts}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+                    <Collapse in={showDetails}>
+                      <ScoreSummaryCard
+                        scores={response?.scores}
+                        technical={response?.technical_details}
+                        macro={response?.macro_details}
+                        tooltips={tooltipTexts}
+                      />
+                    </Collapse>
+                  </Stack>
+                ) : (
+                  <ScoreSummaryCard
+                    scores={response?.scores}
+                    technical={response?.technical_details}
+                    macro={response?.macro_details}
+                    tooltips={tooltipTexts}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </Box>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={5} sx={{ height: '100%' }}>
           <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ height: '100%' }}>
-              <Stack spacing={2.5} alignItems="stretch" height="100%">
+            <CardContent
+              sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}
+            >
+              <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                 <TimeHorizonScale active={scoreMaDays} />
-                <Box textAlign="center">
+                <Box textAlign="center" sx={{ width: '100%' }}>
                   <Box
                     position="relative"
                     display="inline-flex"
@@ -370,33 +374,44 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                       </Typography>
                     </Box>
                   </Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    sx={{ mt: 1, textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}
+                  >
                     売り時くん
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}
+                  >
                     {`${maPersona.label}視点（${maPersona.duration}）で見ています`}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 0.5, textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}
+                  >
                     スコアに応じて表示が変わります
                   </Typography>
                 </Box>
-                <Box
-                  sx={{
-                    mt: 'auto',
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor: copyBg,
-                    border: `1px solid ${badgeBorder}`,
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    {maPersona.copyTitle}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {maPersona.copyBody}
-                  </Typography>
-                </Box>
-              </Stack>
+              </Box>
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  backgroundColor: copyBg,
+                  border: `1px solid ${badgeBorder}`,
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {maPersona.copyTitle}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                  {maPersona.copyBody}
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
