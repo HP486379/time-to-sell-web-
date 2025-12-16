@@ -2,8 +2,9 @@ import { INDEX_LABELS, type IndexType } from './types/index'
 
 export type TooltipTexts = ReturnType<typeof buildTooltips>
 
-export function buildTooltips(indexType: IndexType) {
+export function buildTooltips(indexType: IndexType, scoreMa = 200) {
   const indexName = INDEX_LABELS[indexType] ?? 'S&P500'
+  const baseMaLabel = `${scoreMa}日移動平均線`
 
   return {
     score: {
@@ -16,9 +17,9 @@ export function buildTooltips(indexType: IndexType) {
       macro: '金利・インフレ率・VIX などのマクロ指標の水準をもとにしたスコアです。高いほど株式市場に逆風の環境であることを意味します。',
       event:
         'FOMC や雇用統計など、直近の主要経済イベントの有無・重要度に応じて総合スコアに加算／減算する補正値です。イベントが近いほど大きくなります。',
-      d: `${indexName} の現在値が 200日移動平均線からどれくらい離れているかを示す乖離率（%）です。プラスが大きいほど「長期平均より上振れ＝割高寄り」です。`,
+      d: `${indexName} の現在値が ${baseMaLabel} からどれくらい離れているかを示す乖離率（%）です。プラスが大きいほど「長期平均より上振れ＝割高寄り」です。`,
       T_base:
-        'テクニカルスコアのベース部分です。主に 200日線乖離率などから算出した値で、0〜100 のスケールに正規化しています。',
+        `テクニカルスコアのベース部分です。主に ${baseMaLabel} 乖離率などから算出した値で、0〜100 のスケールに正規化しています。`,
       T_trend:
         'トレンドの強さを 0〜10 で表した指標です。移動平均線の傾きや並び順から算出します。値が高いほど上昇トレンドが強い状態を示します。',
       macroM: '金利・インフレ率・VIX など複数のマクロ指標をまとめて 0〜100 に換算したマクロスコアです。高いほどマクロ環境が株式にとって厳しい状態です。',
