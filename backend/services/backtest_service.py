@@ -46,8 +46,9 @@ class BacktestService:
         price_history: List[Tuple[str, float]],
         macro_series: Dict[str, List[Tuple[date, float]]],
         current_date: date,
+        score_ma: int,
     ):
-        technical_score, _ = calculate_technical_score(price_history)
+        technical_score, _ = calculate_technical_score(price_history, base_window=score_ma)
 
         r_hist, r_cur = self._history_and_current(macro_series["r_10y"], current_date)
         cpi_hist, cpi_cur = self._history_and_current(macro_series["cpi"], current_date)
@@ -82,12 +83,16 @@ class BacktestService:
         buy_threshold: float = 40.0,
         sell_threshold: float = 80.0,
         index_type: str = "SP500",
+        score_ma: int = 200,
     ) -> Dict:
         price_history = self.market_service.get_price_history_range(
             start_date, end_date, allow_fallback=self.allow_fallback, index_type=index_type
         )
-        if len(price_history) < 200:
-            raise ValueError("Not enough price history to run backtest (need >= 200 days)")
+        required_points = max(200, score_ma)
+        if len(price_history) < required_points:
+            raise ValueError(
+                f"Not enough price history to run backtest (need >= {required_points} days)"
+            )
 
         macro_series = self.macro_service.get_macro_series_range(start_date, end_date)
 
@@ -106,9 +111,9 @@ class BacktestService:
         for idx, (date_str, close) in enumerate(price_history):
             current_dt = date.fromisoformat(date_str)
 
-            if idx >= 199:
+            if idx >= max(score_ma - 1, 199):
                 sub_history = price_history[: idx + 1]
-                score = self._calculate_scores(sub_history, macro_series, current_dt)
+                score = self._calculate_scores(sub_history, macro_series, current_dt, score_ma)
 
                 if shares > 0 and score >= sell_threshold:
                     cash += shares * close
