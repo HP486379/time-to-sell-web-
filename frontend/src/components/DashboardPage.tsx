@@ -43,7 +43,7 @@ import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
-import { type ScoreMaDays } from '../constants/maAvatarMap'
+import { type ScoreMaDays, maAvatarAltLabel, maAvatarMap } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
 import { getAlertState, getScoreZoneText } from '../utils/alertState'
 import TimeHorizonScale from './TimeHorizonScale'
@@ -103,8 +103,6 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const response = responses[indexType] ?? null
   const priceSeries = priceSeriesMap[indexType] ?? []
-  const avatarSpriteUrl = '/assets/uridoki-kun-sprite_MA60.png'
-  const avatarAltLabel = '売り時くん（MA60）'
 
   const fetchEvaluation = async (
     targetIndex: IndexType,
@@ -202,6 +200,17 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
 
   const alertState = useMemo(() => getAlertState(response?.scores?.total), [response?.scores?.total])
+
+  const { avatarSpriteUrl, avatarAltLabel } = useMemo(() => {
+    const scoreMaDays = lastRequest.score_ma as ScoreMaDays
+    const fallbackSprite = '/assets/uridoki-kun-sprite_MA60.png'
+    const fallbackAlt = '売り時くん（MA60）'
+
+    return {
+      avatarSpriteUrl: maAvatarMap[scoreMaDays] ?? fallbackSprite,
+      avatarAltLabel: maAvatarAltLabel[scoreMaDays] ?? fallbackAlt,
+    }
+  }, [lastRequest.score_ma])
 
   const { chartSeries, totalReturnLabels, legendLabels } = useMemo(
     () =>
