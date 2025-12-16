@@ -22,7 +22,6 @@ import {
   MenuItem,
   FormHelperText,
   TextField,
-  useTheme,
 } from '@mui/material'
 import axios from 'axios'
 import dayjs from 'dayjs'
@@ -42,14 +41,11 @@ import EventList from './EventList'
 import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
-import UridokiKunAvatar from './UridokiKunAvatar'
 import { type ScoreMaDays } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
 import { getScoreZoneText } from '../utils/alertState'
-import TimeHorizonScale from './TimeHorizonScale'
-import { MA_PERSONA } from '../constants/maPersona'
-import { alpha } from '@mui/material/styles'
-import { type Decision } from '../domain/decision'
+import SellTimingAvatarCard from './SellTimingAvatarCard'
+import { decideSellAction } from '../domain/sellDecision'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -85,7 +81,6 @@ const chartMotion = {
 }
 
 function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
-  const theme = useTheme()
   const [responses, setResponses] = useState<Partial<Record<IndexType, EvaluateResponse>>>({})
   const [error, setError] = useState<string | null>(null)
   const [syntheticNav, setSyntheticNav] = useState<SyntheticNavResponse | null>(null)
@@ -209,7 +204,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const zoneText = useMemo(() => getScoreZoneText(totalScore), [totalScore])
 
-  const avatarDecision = useMemo(() => getAvatarLevel(totalScore), [totalScore])
+  const avatarDecision = useMemo(() => decideSellAction(totalScore), [totalScore])
 
   const { chartSeries, totalReturnLabels, legendLabels } = useMemo(
     () =>
@@ -241,10 +236,6 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
   ]
   const scoreMaDays = lastRequest.score_ma as ScoreMaDays
-  const maPersona = MA_PERSONA[scoreMaDays]
-  const badgeBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.8 : 0.9)
-  const badgeBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.25 : 0.12)
-  const copyBg = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.06)
 
   return (
     <Stack spacing={3}>
@@ -331,89 +322,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </Box>
         </Grid>
         <Grid item xs={12} md={5} sx={{ height: '100%' }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent
-              sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}
-            >
-              <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                <TimeHorizonScale active={scoreMaDays} />
-                <Box textAlign="center" sx={{ width: '100%' }}>
-                  <Box
-                    position="relative"
-                    display="inline-flex"
-                    sx={{
-                      overflow: 'visible',
-                      width: 420,
-                      height: 420,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <UridokiKunAvatar decision={avatarDecision} size={360} animated />
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        bgcolor: badgeBg,
-                        border: `1px solid ${badgeBorder}`,
-                        borderRadius: 2,
-                        px: 1,
-                        py: 0.5,
-                        boxShadow:
-                          theme.palette.mode === 'dark'
-                            ? '0 8px 18px rgba(0,0,0,0.35)'
-                            : '0 8px 18px rgba(0,0,0,0.12)',
-                      }}
-                    >
-                      <Typography variant="body2" component="span" sx={{ display: 'inline-flex', gap: 0.25 }}>
-                        <span aria-hidden>{maPersona.icon}</span>
-                        <Box component="span" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
-                          {maPersona.label}
-                        </Box>
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    sx={{ mt: 1, textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}
-                  >
-                    売り時くん
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}
-                  >
-                    {`${maPersona.label}視点（${maPersona.duration}）で見ています`}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: 'block', mt: 0.5, textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}
-                  >
-                    スコアに応じて表示が変わります
-                  </Typography>
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  backgroundColor: copyBg,
-                  border: `1px solid ${badgeBorder}`,
-                }}
-              >
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  {maPersona.copyTitle}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                  {maPersona.copyBody}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+          <SellTimingAvatarCard decision={avatarDecision} scoreMaDays={scoreMaDays} />
         </Grid>
       </Grid>
 
