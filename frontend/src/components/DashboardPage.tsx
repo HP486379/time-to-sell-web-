@@ -43,7 +43,7 @@ import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
-import { DEFAULT_AVATAR_ALT, DEFAULT_AVATAR_SPRITE, type ScoreMaDays } from '../constants/maAvatarMap'
+import { type ScoreMaDays } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
 import { getAlertState, getScoreZoneText } from '../utils/alertState'
 import TimeHorizonScale from './TimeHorizonScale'
@@ -103,8 +103,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const response = responses[indexType] ?? null
   const priceSeries = priceSeriesMap[indexType] ?? []
-  const avatarSpriteUrl = DEFAULT_AVATAR_SPRITE
-  const avatarAltLabel = DEFAULT_AVATAR_ALT
+  const avatarSpriteUrl = '/assets/uridoki-kun-sprite_MA60.png'
+  const avatarAltLabel = '売り時くん（MA60）'
 
   const fetchEvaluation = async (
     targetIndex: IndexType,
@@ -233,13 +233,6 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
   ]
   const scoreMaDays = lastRequest.score_ma as ScoreMaDays
-  const { avatarSpriteUrl, avatarAltLabel } = useMemo(
-    () => ({
-      avatarSpriteUrl: DEFAULT_AVATAR_SPRITE,
-      avatarAltLabel: DEFAULT_AVATAR_ALT,
-    }),
-    [],
-  )
   const maPersona = MA_PERSONA[scoreMaDays]
   const badgeBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.8 : 0.9)
   const badgeBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.25 : 0.12)
@@ -338,8 +331,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                     display="inline-flex"
                     sx={{
                       overflow: 'visible',
-                      width: 400,
-                      height: 400,
+                      width: 420,
+                      height: 420,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -348,7 +341,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                       decision={alertState.decision}
                       spriteUrl={avatarSpriteUrl}
                       label={avatarAltLabel}
-                      size={340}
+                      size={360}
                       animated
                     />
                     <Box
