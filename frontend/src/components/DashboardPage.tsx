@@ -233,8 +233,13 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
     { value: 200, labelSimple: '長期（3か月〜1年）', labelPro: '200日（長期・3か月〜1年）' },
   ]
   const scoreMaDays = lastRequest.score_ma as ScoreMaDays
-  const avatarSpriteUrl = DEFAULT_AVATAR_SPRITE
-  const avatarAltLabel = DEFAULT_AVATAR_ALT
+  const { avatarSpriteUrl, avatarAltLabel } = useMemo(
+    () => ({
+      avatarSpriteUrl: DEFAULT_AVATAR_SPRITE,
+      avatarAltLabel: DEFAULT_AVATAR_ALT,
+    }),
+    [],
+  )
   const maPersona = MA_PERSONA[scoreMaDays]
   const badgeBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.8 : 0.9)
   const badgeBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.25 : 0.12)
@@ -333,8 +338,8 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                     display="inline-flex"
                     sx={{
                       overflow: 'visible',
-                      width: 360,
-                      height: 360,
+                      width: 400,
+                      height: 400,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -343,7 +348,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                       decision={alertState.decision}
                       spriteUrl={avatarSpriteUrl}
                       label={avatarAltLabel}
-                      size={320}
+                      size={340}
                       animated
                     />
                     <Box
