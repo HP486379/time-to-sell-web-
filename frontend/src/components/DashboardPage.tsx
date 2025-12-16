@@ -43,12 +43,13 @@ import { buildTooltips } from '../tooltipTexts'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SimpleAlertCard from './SimpleAlertCard'
 import UridokiKunAvatar from './UridokiKunAvatar'
-import { type ScoreMaDays, maAvatarAltLabel, maAvatarMap } from '../constants/maAvatarMap'
+import { type ScoreMaDays } from '../constants/maAvatarMap'
 import { INDEX_LABELS, PRICE_TITLE_MAP, type IndexType } from '../types/index'
-import { getAlertState, getScoreZoneText } from '../utils/alertState'
+import { getScoreZoneText } from '../utils/alertState'
 import TimeHorizonScale from './TimeHorizonScale'
 import { MA_PERSONA } from '../constants/maPersona'
 import { alpha } from '@mui/material/styles'
+import { type Decision } from '../domain/decision'
 
 const apiBase =
   import.meta.env.VITE_API_BASE ||
@@ -102,7 +103,16 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const tooltipTexts = useMemo(() => buildTooltips(indexType, lastRequest.score_ma), [indexType, lastRequest.score_ma])
 
   const response = responses[indexType] ?? null
+  const totalScore = response?.scores?.total
   const priceSeries = priceSeriesMap[indexType] ?? []
+
+  const getAvatarLevel = (score?: number): Decision => {
+    if (score === undefined || Number.isNaN(score)) return 'HOLD_OR_BUY'
+    if (score >= 80) return 'TAKE_PROFIT'
+    if (score >= 60) return 'TAKE_PROFIT'
+    if (score >= 40) return 'WAIT'
+    return 'HOLD_OR_BUY'
+  }
 
   const fetchEvaluation = async (
     targetIndex: IndexType,
@@ -197,20 +207,9 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
 
   const highlights = useMemo(() => buildHighlights(response), [response])
 
-  const zoneText = useMemo(() => getScoreZoneText(response?.scores?.total), [response?.scores?.total])
+  const zoneText = useMemo(() => getScoreZoneText(totalScore), [totalScore])
 
-  const alertState = useMemo(() => getAlertState(response?.scores?.total), [response?.scores?.total])
-
-  const { avatarSpriteUrl, avatarAltLabel } = useMemo(() => {
-    const scoreMaDays = lastRequest.score_ma as ScoreMaDays
-    const fallbackSprite = '/assets/uridoki-kun-sprite_MA60.png'
-    const fallbackAlt = '売り時くん（MA60）'
-
-    return {
-      avatarSpriteUrl: maAvatarMap[scoreMaDays] ?? fallbackSprite,
-      avatarAltLabel: maAvatarAltLabel[scoreMaDays] ?? fallbackAlt,
-    }
-  }, [lastRequest.score_ma])
+  const avatarDecision = useMemo(() => getAvatarLevel(totalScore), [totalScore])
 
   const { chartSeries, totalReturnLabels, legendLabels } = useMemo(
     () =>
@@ -346,13 +345,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                       justifyContent: 'center',
                     }}
                   >
-                    <UridokiKunAvatar
-                      decision={alertState.decision}
-                      spriteUrl={avatarSpriteUrl}
-                      label={avatarAltLabel}
-                      size={360}
-                      animated
-                    />
+                    <UridokiKunAvatar decision={avatarDecision} size={360} animated />
                     <Box
                       sx={{
                         position: 'absolute',
@@ -384,7 +377,7 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                     {`${maPersona.label}視点（${maPersona.duration}）で見ています`}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                    標準スプライト（MA60）を固定表示しています
+                    スコアに応じて表示が変わります
                   </Typography>
                 </Box>
                 <Box

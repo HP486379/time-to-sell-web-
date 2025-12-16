@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Decision } from '../domain/decision'
-import { DEFAULT_AVATAR_ALT, DEFAULT_AVATAR_SPRITE } from '../constants/maAvatarMap'
+import { DEFAULT_AVATAR_ALT, DEFAULT_AVATAR_SPRITE, type ScoreMaDays } from '../constants/maAvatarMap'
 
 interface Props {
   decision: Decision
@@ -28,11 +28,10 @@ export const UridokiKunAvatar: React.FC<Props> = ({
   size = 96,
   animated = false,
   label,
-  spriteUrl,
 }) => {
   const ariaLabel = label ?? DEFAULT_AVATAR_ALT ?? levelLabels[decision]
   const fallback = 'linear-gradient(135deg, #1e293b, #0ea5e9)'
-  const resolvedUrl = spriteUrl ?? DEFAULT_AVATAR_SPRITE
+  const resolvedUrl = DEFAULT_AVATAR_SPRITE
 
   return (
     <div
@@ -51,7 +50,6 @@ export const UridokiKunAvatar: React.FC<Props> = ({
         backgroundRepeat: 'no-repeat',
         borderRadius: 12,
         boxShadow: animated ? '0 10px 25px rgba(0,0,0,0.12)' : undefined,
-        overflow: 'visible',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
