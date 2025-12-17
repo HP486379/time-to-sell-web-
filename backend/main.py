@@ -43,14 +43,14 @@ class PricePoint(BaseModel):
 
 
 class EvaluateResponse(BaseModel):
-    current_price: float
-    market_value: float
-    unrealized_pnl: float
-    scores: dict
-    technical_details: dict
-    macro_details: dict
-    event_details: dict
-    price_series: List[PricePoint]
+    current_price: Optional[float] = None
+    market_value: Optional[float] = None
+    unrealized_pnl: Optional[float] = None
+    scores: dict = Field(default_factory=dict)
+    technical_details: dict = Field(default_factory=dict)
+    macro_details: dict = Field(default_factory=dict)
+    event_details: dict = Field(default_factory=dict)
+    price_series: List[PricePoint] = Field(default_factory=list)
 
 
 class SyntheticNavResponse(BaseModel):
@@ -155,46 +155,95 @@ def get_fund_nav():
 
 
 def _build_snapshot(index_type: IndexType = IndexType.SP500):
-    price_history = market_service.get_price_history(index_type=index_type.value)
-    market_service.get_current_price(price_history, index_type=index_type.value)
-    market_service.get_usd_jpy()
-    if index_type == IndexType.SP500:
-        fund_nav = nav_service.get_official_nav() or nav_service.get_synthetic_nav()
-        current_price = fund_nav["navJpy"]
-    else:
-        current_price = price_history[-1][1]
+    events: List[dict] = []
+    try:
+        events = event_service.get_events()
+    except Exception:
+        logger.error("Failed to fetch events; falling back to empty list", exc_info=True)
+        events = []
 
-    technical_score, technical_details = calculate_technical_score(price_history)
-    macro_data = macro_service.get_macro_series()
-    macro_score, macro_details = calculate_macro_score(
-        macro_data["r_10y"], macro_data["cpi"], macro_data["vix"]
-    )
+    try:
+        event_adjustment, event_details_raw = calculate_event_adjustment(date.today(), events)
+    except Exception:
+        logger.error("Failed to calculate event adjustment; using zero adjustment", exc_info=True)
+        event_adjustment, event_details_raw = 0.0, {}
 
-    events = event_service.get_events()
-    event_log = [
-        {
-            "name": e.get("name"),
-            "source": "local heuristic calendar (FOMC=3rd Wed, CPI=around 10th, NFP=1st Fri)",
-            "raw_date": str(e.get("date")),
-            "parsed_iso": to_jst_iso(e.get("date")),
-            "display_jst": f"{to_jst_iso(e.get('date'))} (JST)",
-        }
-        for e in events
-    ]
-    logger.info("[EVENT TRACE] %s", event_log)
-    event_adjustment, event_details = calculate_event_adjustment(date.today(), events)
+    def _format_iso(d: Optional[date]) -> Optional[str]:
+        if isinstance(d, date):
+            return to_jst_iso(d)
+        return None
+
+    effective_event = event_details_raw.get("effective_event") if isinstance(event_details_raw, dict) else None
+    iso_effective_event = None
+    if isinstance(effective_event, dict):
+        iso_date = _format_iso(effective_event.get("date"))
+        if iso_date:
+            iso_effective_event = {**effective_event, "date": iso_date, "source": effective_event.get("source")}
+
+    event_details = {
+        "E_adj": event_adjustment,
+        "R_max": event_details_raw.get("R_max") if isinstance(event_details_raw, dict) else None,
+        "effective_event": iso_effective_event,
+        "events": [
+            {
+                **e,
+                "date": _format_iso(e.get("date")),
+                "timezone": "Asia/Tokyo",
+            }
+            for e in events
+        ],
+    }
+
+    price_history: List = []
+    price_series: List[PricePoint] = []
+    current_price: Optional[float] = None
+    try:
+        price_history = market_service.get_price_history(index_type=index_type.value)
+        try:
+            market_service.get_current_price(price_history, index_type=index_type.value)
+            market_service.get_usd_jpy()
+        except Exception:
+            logger.error("Failed to refresh market auxiliary data", exc_info=True)
+        if index_type == IndexType.SP500:
+            try:
+                fund_nav = nav_service.get_official_nav() or nav_service.get_synthetic_nav()
+                current_price = fund_nav.get("navJpy")
+            except Exception:
+                logger.error("Failed to fetch nav; falling back to price history", exc_info=True)
+                current_price = price_history[-1][1] if price_history else None
+        else:
+            current_price = price_history[-1][1] if price_history else None
+        try:
+            price_series = market_service.build_price_series_with_ma(price_history)
+        except Exception:
+            logger.error("Failed to build price series", exc_info=True)
+            price_series = []
+    except Exception:
+        logger.error("Failed to fetch price history; continuing with empty data", exc_info=True)
+        price_history, price_series, current_price = [], [], None
+
+    technical_score = 0.0
+    technical_details = {}
+    if price_history:
+        try:
+            technical_score, technical_details = calculate_technical_score(price_history)
+        except Exception:
+            logger.error("Failed to calculate technical score", exc_info=True)
+            technical_score, technical_details = 0.0, {}
+
+    macro_score = 0.0
+    macro_details = {}
+    try:
+        macro_data = macro_service.get_macro_series()
+        macro_score, macro_details = calculate_macro_score(
+            macro_data["r_10y"], macro_data["cpi"], macro_data["vix"]
+        )
+    except Exception:
+        logger.error("Failed to calculate macro score", exc_info=True)
+        macro_score, macro_details = 0.0, {}
 
     total_score = calculate_total_score(technical_score, macro_score, event_adjustment)
     label = get_label(total_score)
-
-    effective_event = event_details.get("effective_event")
-    iso_effective_event = None
-    if effective_event:
-        iso_effective_event = {
-            **effective_event,
-            "date": to_jst_iso(effective_event["date"]),
-            "source": "local heuristic calendar",
-        }
 
     snapshot = {
         "current_price": current_price,
@@ -207,22 +256,9 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
         },
         "technical_details": technical_details,
         "macro_details": macro_details,
-        "event_details": {
-            "E_adj": event_adjustment,
-            "R_max": event_details.get("R_max"),
-            "effective_event": iso_effective_event,
-            "events": [
-                {
-                    **e,
-                    "date": to_jst_iso(e.get("date")),
-                    "source": "local heuristic calendar",
-                    "timezone": "Asia/Tokyo",
-                }
-                for e in events
-            ],
-        },
+        "event_details": event_details,
         "price_history": price_history,
-        "price_series": market_service.build_price_series_with_ma(price_history),
+        "price_series": price_series,
     }
 
     return snapshot
@@ -284,13 +320,18 @@ def get_cached_snapshot(index_type: IndexType = IndexType.SP500):
 
 def _evaluate(position: PositionRequest):
     snapshot = get_cached_snapshot(index_type=position.index_type)
-    current_price = snapshot["current_price"]
+    current_price = snapshot.get("current_price")
 
-    technical_score, technical_details = calculate_technical_score(
-        snapshot["price_history"], base_window=position.score_ma
-    )
-    macro_score = snapshot["scores"]["macro"]
-    event_adjustment = snapshot["scores"]["event_adjustment"]
+    try:
+        technical_score, technical_details = calculate_technical_score(
+            snapshot.get("price_history", []), base_window=position.score_ma
+        )
+    except Exception:
+        logger.error("Failed to calculate technical score for evaluate", exc_info=True)
+        technical_score, technical_details = 0.0, {}
+
+    macro_score = snapshot.get("scores", {}).get("macro", 0.0)
+    event_adjustment = snapshot.get("scores", {}).get("event_adjustment", 0.0)
     total_score = calculate_total_score(technical_score, macro_score, event_adjustment)
     label = get_label(total_score)
 
@@ -302,7 +343,7 @@ def _evaluate(position: PositionRequest):
         "label": label,
     }
 
-    market_value = position.total_quantity * current_price
+    market_value = position.total_quantity * current_price if current_price is not None else 0.0
     avg_cost_total = position.total_quantity * position.avg_cost
     unrealized_pnl = market_value - avg_cost_total
 
@@ -312,9 +353,9 @@ def _evaluate(position: PositionRequest):
         "unrealized_pnl": round(unrealized_pnl, 2),
         "scores": scores,
         "technical_details": technical_details,
-        "macro_details": snapshot["macro_details"],
-        "event_details": snapshot["event_details"],
-        "price_series": snapshot["price_series"],
+        "macro_details": snapshot.get("macro_details", {}),
+        "event_details": snapshot.get("event_details", {}),
+        "price_series": snapshot.get("price_series", []),
     }
 
 
