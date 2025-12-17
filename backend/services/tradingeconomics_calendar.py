@@ -74,6 +74,13 @@ class TradingEconomicsCalendarProvider:
         # importance= (1-Low, 2-Medium, 3-High)
         params["importance"] = str(self.importance)
 
+        logger.info(
+            "Calling TradingEconomics calendar: countries=%s start=%s end=%s importance=%s",
+            self.countries,
+            start,
+            end,
+            params["importance"],
+        )
         try:
             resp = requests.get(url, params=params, timeout=self.timeout_sec)
             resp.raise_for_status()
@@ -85,8 +92,10 @@ class TradingEconomicsCalendarProvider:
         except Exception as exc:
             logger.error("TradingEconomics API request failed", exc_info=True)
             raise
+        logger.info("TradingEconomics raw response (truncated): %s", resp.text[:500])
         raw = resp.json()
         if not isinstance(raw, list):
+            logger.warning("TradingEconomics response is not a list; type=%s", type(raw))
             raw = []
 
         normalized: List[Dict] = []
@@ -129,6 +138,14 @@ class TradingEconomicsCalendarProvider:
             )
 
         normalized.sort(key=lambda e: e["date"])
+        if not normalized:
+            logger.info(
+                "TradingEconomics returned no events after normalization (countries=%s, importance=%s, window_days=%s, raw_count=%s)",
+                self.countries,
+                self.importance,
+                self.window_days,
+                len(raw),
+            )
         self._cache_events = normalized
         self._cache_until = now + self.cache_ttl_sec
         return normalized
