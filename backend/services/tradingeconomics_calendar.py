@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -12,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 
 JST = ZoneInfo("Asia/Tokyo")
+logger = logging.getLogger(__name__)
 
 
 def _to_jst(dt: datetime) -> datetime:
@@ -42,9 +44,12 @@ class TradingEconomicsCalendarProvider:
 
     @classmethod
     def from_env(cls) -> "TradingEconomicsCalendarProvider | None":
-        api_key = os.getenv("TE_API_KEY", "").strip()
-        if not api_key:
+        raw_api_key = os.getenv("TE_API_KEY")
+        if raw_api_key is None:
             return None
+        api_key = raw_api_key.strip()
+        if not api_key:
+            logger.warning("TE_API_KEY is present but empty; instantiating provider anyway.")
         countries = os.getenv("TE_COUNTRIES", "united states").strip()
         importance = _safe_int(os.getenv("TE_IMPORTANCE", "3"), 3)
         window_days = _safe_int(os.getenv("TE_WINDOW_DAYS", "60"), 60)
@@ -69,10 +74,28 @@ class TradingEconomicsCalendarProvider:
         # importance= (1-Low, 2-Medium, 3-High)
         params["importance"] = str(self.importance)
 
-        resp = requests.get(url, params=params, timeout=self.timeout_sec)
-        resp.raise_for_status()
+        logger.info(
+            "Calling TradingEconomics calendar: countries=%s start=%s end=%s importance=%s",
+            self.countries,
+            start,
+            end,
+            params["importance"],
+        )
+        try:
+            resp = requests.get(url, params=params, timeout=self.timeout_sec)
+            resp.raise_for_status()
+        except requests.HTTPError as exc:
+            status = getattr(exc.response, "status_code", "unknown")
+            body = getattr(exc.response, "text", "")
+            logger.error("TradingEconomics API HTTP error: status=%s body=%s", status, body, exc_info=True)
+            raise
+        except Exception as exc:
+            logger.error("TradingEconomics API request failed", exc_info=True)
+            raise
+        logger.info("TradingEconomics raw response (truncated): %s", resp.text[:500])
         raw = resp.json()
         if not isinstance(raw, list):
+            logger.warning("TradingEconomics response is not a list; type=%s", type(raw))
             raw = []
 
         normalized: List[Dict] = []
@@ -115,6 +138,14 @@ class TradingEconomicsCalendarProvider:
             )
 
         normalized.sort(key=lambda e: e["date"])
+        if not normalized:
+            logger.info(
+                "TradingEconomics returned no events after normalization (countries=%s, importance=%s, window_days=%s, raw_count=%s)",
+                self.countries,
+                self.importance,
+                self.window_days,
+                len(raw),
+            )
         self._cache_events = normalized
         self._cache_until = now + self.cache_ttl_sec
         return normalized

@@ -1,7 +1,11 @@
+import logging
 from datetime import date, timedelta
 from typing import Dict, List
 
 from services.tradingeconomics_calendar import TradingEconomicsCalendarProvider
+
+
+logger = logging.getLogger(__name__)
 
 
 class EventService:
@@ -48,12 +52,15 @@ class EventService:
             try:
                 events = self._te.fetch_events(target)
             except Exception:
+                logger.warning("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
                 events = []
         else:
+            logger.warning("TradingEconomics provider unavailable; falling back to heuristic calendar")
             events = []
 
         # 2) APIが取れなければフォールバック
         if not events:
+            logger.warning("TradingEconomics returned no events; using heuristic calendar")
             events = self._monthly_events_fallback(target)
 
         # 3) 既存のwindow絞り込み（今の挙動を維持）
