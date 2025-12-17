@@ -101,6 +101,14 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
   const totalScore = response?.scores?.total
   const priceSeries = priceSeriesMap[indexType] ?? []
 
+  const getAvatarLevel = (score?: number): Decision => {
+    if (score === undefined || Number.isNaN(score)) return 'HOLD_OR_BUY'
+    if (score >= 80) return 'TAKE_PROFIT'
+    if (score >= 60) return 'TAKE_PROFIT'
+    if (score >= 40) return 'WAIT'
+    return 'HOLD_OR_BUY'
+  }
+
   const fetchEvaluation = async (
     targetIndex: IndexType,
     payload?: Partial<EvaluateRequest>,
@@ -303,8 +311,10 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                   <Collapse in={showDetails}>
                     <ScoreSummaryCard
                       scores={response?.scores}
-                      technical={response?.technical_details}
-                      macro={response?.macro_details}
+                      highlights={highlights}
+                      zoneText={zoneText}
+                      onShowDetails={() => setShowDetails((prev) => !prev)}
+                      expanded={showDetails}
                       tooltips={tooltipTexts}
                     />
                   </Collapse>
