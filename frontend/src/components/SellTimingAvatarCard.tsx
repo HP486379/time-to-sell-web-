@@ -20,9 +20,7 @@ export default function SellTimingAvatarCard({ decision, scoreMaDays }: SellTimi
 
   return (
     <Card sx={{ height: '100%' }}>
-      <CardContent
-        sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1 }}
-      >
+      <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
           <TimeHorizonScale active={scoreMaDays} />
           <Box textAlign="center" sx={{ width: '100%' }}>
@@ -91,6 +89,7 @@ export default function SellTimingAvatarCard({ decision, scoreMaDays }: SellTimi
             borderRadius: 2,
             backgroundColor: copyBg,
             border: `1px solid ${badgeBorder}`,
+            mt: 'auto',
           }}
         >
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>

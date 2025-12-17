@@ -285,13 +285,13 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
           </Tooltip>
         </Box>
       </Box>
-      <Grid container spacing={3} alignItems="stretch">
-        <Grid item xs={12} md={7} sx={{ height: '100%' }}>
-          <Box sx={{ height: '100%' }}>
-            <AnimatePresence mode="wait">
-              <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
-                {displayMode === 'simple' ? (
-                  <Stack spacing={2} sx={{ height: '100%' }}>
+      <AnimatePresence mode="wait">
+        <motion.div key={displayMode} variants={motionVariants} initial="initial" animate="animate" exit="exit">
+          <Grid container spacing={3} alignItems="stretch">
+            {displayMode === 'simple' ? (
+              <>
+                <Grid item xs={12} md={7} sx={{ height: '100%' }}>
+                  <Box sx={{ height: '100%' }}>
                     <SimpleAlertCard
                       scores={response?.scores}
                       highlights={highlights}
@@ -300,31 +300,44 @@ function DashboardPage({ displayMode }: { displayMode: DisplayMode }) {
                       expanded={showDetails}
                       tooltips={tooltipTexts}
                     />
-                    <Collapse in={showDetails}>
-                      <ScoreSummaryCard
-                        scores={response?.scores}
-                        technical={response?.technical_details}
-                        macro={response?.macro_details}
-                        tooltips={tooltipTexts}
-                      />
-                    </Collapse>
-                  </Stack>
-                ) : (
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={5} sx={{ height: '100%' }}>
+                  <SellTimingAvatarCard decision={avatarDecision} scoreMaDays={scoreMaDays} />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Collapse in={showDetails}>
+                    <ScoreSummaryCard
+                      scores={response?.scores}
+                      highlights={highlights}
+                      zoneText={zoneText}
+                      onShowDetails={() => setShowDetails((prev) => !prev)}
+                      expanded={showDetails}
+                      tooltips={tooltipTexts}
+                    />
+                  </Collapse>
+                </Grid>
+              </>
+            ) : (
+              <>
+                <Grid item xs={12} md={7} sx={{ height: '100%' }}>
                   <ScoreSummaryCard
                     scores={response?.scores}
                     technical={response?.technical_details}
                     macro={response?.macro_details}
                     tooltips={tooltipTexts}
                   />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </Box>
-        </Grid>
-        <Grid item xs={12} md={5} sx={{ height: '100%' }}>
-          <SellTimingAvatarCard decision={avatarDecision} scoreMaDays={scoreMaDays} />
-        </Grid>
-      </Grid>
+                </Grid>
+                <Grid item xs={12} md={5} sx={{ height: '100%' }}>
+                  <SellTimingAvatarCard decision={avatarDecision} scoreMaDays={scoreMaDays} />
+                </Grid>
+              </>
+            )}
+          </Grid>
+        </motion.div>
+      </AnimatePresence>
 
       <Card>
         <CardContent>
