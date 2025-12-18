@@ -1,5 +1,7 @@
+import json
 import logging
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Dict, List
 
 from services.tradingeconomics_calendar import TradingEconomicsCalendarProvider
@@ -8,9 +10,23 @@ from services.tradingeconomics_calendar import TradingEconomicsCalendarProvider
 logger = logging.getLogger(__name__)
 
 
+class ManualCalendarProvider:
+    def __init__(self, path: Path):
+        self.path = path
+
+    def load_events(self) -> list[dict]:
+        try:
+            with self.path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            logger.exception("[ManualCalendar] Failed to load us_events.json")
+            return []
+
+
 class EventService:
-    def __init__(self) -> None:
-        self._te = TradingEconomicsCalendarProvider.from_env()
+    def __init__(self, manual_events: list[dict], te_provider=None) -> None:
+        self._manual_events = manual_events
+        self._te = te_provider
 
     # --- fallback (heuristic) は残す（API失敗時のみ使う） ---
     def _compute_third_wednesday(self, target: date) -> date:
@@ -46,31 +62,50 @@ class EventService:
 
     def get_events_for_date(self, target: date) -> List[Dict]:
         window_days = 30
+        events: List[Dict] = []
+        target_iso = target.isoformat()
 
-        # 1) API優先
+        # ---- ① 手動カレンダーが最優先 ----
+        for ev in self._manual_events:
+            if ev.get("date") == target_iso:
+                enriched = {**ev, "date": target, "source": ev.get("source", "manual calendar")}
+                events.append(enriched)
+
+        # ---- ② TE（403 の場合は空配列）----
         if self._te is not None:
             try:
-                events = self._te.fetch_events(target)
+                te_events = self._te.fetch_events(target)
+                if te_events:
+                    events.extend(te_events)
             except Exception:
-                logger.warning("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
-                events = []
+                # TE エラーは握りつぶし
+                pass
         else:
-            logger.warning("TradingEconomics provider unavailable; falling back to heuristic calendar")
-            events = []
+            logger.info("TradingEconomics provider unavailable; falling back to manual/heuristic calendar")
 
-        # 2) APIが取れなければフォールバック
+        # ---- ③ フォールバック（ヒューリスティック）----
         if not events:
-            logger.warning("TradingEconomics returned no events; using heuristic calendar")
             events = self._monthly_events_fallback(target)
 
-        # 3) 既存のwindow絞り込み（今の挙動を維持）
+        # 既存のwindow絞り込み（今の挙動を維持）
         windowed = [
             event
             for event in events
-            if "date" in event and isinstance(event["date"], date)
+            if "date" in event
+            and isinstance(event["date"], date)
             and -7 <= (event["date"] - target).days <= window_days
         ]
         return sorted(windowed, key=lambda e: e["date"])
 
     def get_events(self) -> List[Dict]:
         return self.get_events_for_date(date.today())
+
+    def get_te_debug_info(self) -> Dict:
+        if self._te is None:
+            return {"enabled": False}
+        return {
+            "enabled": True,
+            "countries": self._te.countries,
+            "importance": self._te.importance,
+            "windowDays": self._te.window_days,
+        }

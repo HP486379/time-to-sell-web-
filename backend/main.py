@@ -1,10 +1,15 @@
+import logging
+from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
-import logging
 from enum import Enum
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 from scoring.technical import calculate_technical_score
 from scoring.macro import calculate_macro_score
@@ -12,9 +17,10 @@ from scoring.events import calculate_event_adjustment
 from scoring.total_score import calculate_total_score, get_label
 from services.sp500_market_service import SP500MarketService
 from services.macro_data_service import MacroDataService
-from services.event_service import EventService
+from services.event_service import EventService, ManualCalendarProvider
 from services.nav_service import FundNavService
 from services.backtest_service import BacktestService
+from services.tradingeconomics_calendar import TradingEconomicsCalendarProvider
 
 
 class IndexType(str, Enum):
@@ -116,7 +122,17 @@ app.add_middleware(
 
 market_service = SP500MarketService()
 macro_service = MacroDataService()
-event_service = EventService()
+
+manual_events_path = Path(__file__).parent / "data" / "us_events.json"
+manual_events = ManualCalendarProvider(manual_events_path).load_events()
+
+te_provider = None
+try:
+    te_provider = TradingEconomicsCalendarProvider.from_env()
+except Exception:
+    te_provider = None
+
+event_service = EventService(manual_events=manual_events, te_provider=te_provider)
 nav_service = FundNavService()
 backtest_service = BacktestService(market_service, macro_service, event_service)
 
@@ -134,6 +150,11 @@ _cached_at: dict[str, datetime] = {}
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/debug/te")
+def debug_te():
+    return event_service.get_te_debug_info()
 
 
 @app.get("/api/nav/sp500-synthetic", response_model=SyntheticNavResponse)
