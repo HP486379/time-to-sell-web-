@@ -109,6 +109,8 @@ class BacktestResponse(BaseModel):
 
 logger = logging.getLogger(__name__)
 
+logger.info("TE_API_KEY present=%s", bool(os.getenv("TE_API_KEY")))
+
 app = FastAPI(title="S&P500 Timing API")
 
 app.add_middleware(

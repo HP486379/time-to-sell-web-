@@ -73,6 +73,9 @@ class EventService:
 
         # ---- ② TE（403 の場合は空配列）----
         if self._te is not None:
+            # TEはオプション。無料枠では403が通常運転なので、空配列を受け入れて
+            # も必ずヒューリスティックに落とす。
+            te_attempted = True
             try:
                 te_events = self._te.fetch_events(target)
                 if te_events:
