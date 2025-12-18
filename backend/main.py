@@ -1,10 +1,16 @@
+import logging
+import os
+from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
-import logging
 from enum import Enum
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 from scoring.technical import calculate_technical_score
 from scoring.macro import calculate_macro_score
@@ -102,6 +108,8 @@ class BacktestResponse(BaseModel):
 
 
 logger = logging.getLogger(__name__)
+
+logger.info("TE_API_KEY present=%s", bool(os.getenv("TE_API_KEY")))
 
 app = FastAPI(title="S&P500 Timing API")
 
