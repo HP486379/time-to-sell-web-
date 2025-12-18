@@ -55,14 +55,14 @@ class EventService:
             try:
                 events = self._te.fetch_events(target)
             except Exception:
-                logger.warning("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
+                logger.info("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
         else:
-            logger.warning("TradingEconomics provider unavailable; falling back to heuristic calendar")
+            logger.info("TradingEconomics provider unavailable; falling back to heuristic calendar")
 
         # 2) APIが取れなければフォールバック
         if not events:
             if te_attempted:
-                logger.warning("TE returned 0 events -> fallback to heuristic")
+                logger.info("TE returned 0 events -> fallback to heuristic")
             events = self._monthly_events_fallback(target)
 
         # 3) 既存のwindow絞り込み（今の挙動を維持）
@@ -76,3 +76,13 @@ class EventService:
 
     def get_events(self) -> List[Dict]:
         return self.get_events_for_date(date.today())
+
+    def get_te_debug_info(self) -> Dict:
+        if self._te is None:
+            return {"enabled": False}
+        return {
+            "enabled": True,
+            "countries": self._te.countries,
+            "importance": self._te.importance,
+            "windowDays": self._te.window_days,
+        }

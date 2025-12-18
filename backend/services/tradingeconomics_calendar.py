@@ -79,12 +79,25 @@ class TradingEconomicsCalendarProvider:
         except Exception as exc:
             status = getattr(getattr(exc, "response", None), "status_code", "request_failed")
             body = getattr(getattr(exc, "response", None), "text", "")
-            logger.warning("[TE RAW RESPONSE] status=%s body=%s", status, (body or "")[:500])
-            raise
+            log = logger.info if status == 403 else logger.warning
+            log("[TE RAW RESPONSE] status=%s body=%s", status, (body or "")[:500])
+            return []
 
-        logger.warning("[TE RAW RESPONSE] status=%s body=%s", resp.status_code, resp.text[:500])
-        resp.raise_for_status()
-        raw = resp.json()
+        log_level = logger.info if resp.status_code == 403 else logger.warning
+        log_level("[TE RAW RESPONSE] status=%s body=%s", resp.status_code, resp.text[:500])
+        if resp.status_code == 403:
+            return []
+
+        try:
+            resp.raise_for_status()
+        except Exception:
+            return []
+
+        try:
+            raw = resp.json()
+        except Exception:
+            return []
+
         if not isinstance(raw, list):
             raw = []
 

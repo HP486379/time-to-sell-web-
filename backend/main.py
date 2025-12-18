@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
@@ -142,6 +141,11 @@ _cached_at: dict[str, datetime] = {}
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/debug/te")
+def debug_te():
+    return event_service.get_te_debug_info()
 
 
 @app.get("/api/nav/sp500-synthetic", response_model=SyntheticNavResponse)
