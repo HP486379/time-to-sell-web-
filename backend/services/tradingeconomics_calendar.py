@@ -56,6 +56,11 @@ class TradingEconomicsCalendarProvider:
         return cls(api_key=api_key, countries=countries, importance=importance, window_days=window_days)
 
     def fetch_events(self, today: date) -> List[Dict]:
+        """
+        TradingEconomics is optional/free-tier: 403やネットワーク失敗は想定内。
+        失敗時は例外を投げず空配列で返し、呼び出し元がヒューリスティックに
+        確実にフォールバックできるようにする。
+        """
         # Simple in-memory cache (per process)
         now = time.time()
         if self._cache_events is not None and now < self._cache_until:
@@ -86,11 +91,13 @@ class TradingEconomicsCalendarProvider:
         log_level = logger.info if resp.status_code == 403 else logger.warning
         log_level("[TE RAW RESPONSE] status=%s body=%s", resp.status_code, resp.text[:500])
         if resp.status_code == 403:
+            # 無料枠では頻出する想定内の応答。空配列でフォールバックさせる。
             return []
 
         try:
             resp.raise_for_status()
         except Exception:
+            # TE失敗は想定内。フォールバックを優先する。
             return []
 
         try:
