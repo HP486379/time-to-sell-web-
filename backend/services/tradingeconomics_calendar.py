@@ -74,38 +74,18 @@ class TradingEconomicsCalendarProvider:
         # importance= (1-Low, 2-Medium, 3-High)
         params["importance"] = str(self.importance)
 
-        logged_url = f"{url}?c=***&importance={params['importance']}"
-        logger.info(
-            "Calling TradingEconomics calendar: url=%s countries=%s start=%s end=%s importance=%s",
-            logged_url,
-            self.countries,
-            start,
-            end,
-            params["importance"],
-        )
         try:
             resp = requests.get(url, params=params, timeout=self.timeout_sec)
-            resp.raise_for_status()
-            logger.info("TradingEconomics calendar request succeeded: url=%s status=%s", logged_url, resp.status_code)
-        except requests.HTTPError as exc:
-            status = getattr(exc.response, "status_code", "unknown")
-            body = getattr(exc.response, "text", "")
-            body_preview = body[:200] if isinstance(body, str) else ""
-            logger.error(
-                "TradingEconomics API HTTP error: url=%s status=%s body_preview=%s",
-                logged_url,
-                status,
-                body_preview,
-                exc_info=True,
-            )
-            raise
         except Exception as exc:
-            logger.error("TradingEconomics API request failed: url=%s", logged_url, exc_info=True)
+            status = getattr(getattr(exc, "response", None), "status_code", "request_failed")
+            body = getattr(getattr(exc, "response", None), "text", "")
+            logger.warning("[TE RAW RESPONSE] status=%s body=%s", status, (body or "")[:500])
             raise
-        logger.info("TradingEconomics raw response (truncated): %s", resp.text[:500])
+
+        logger.warning("[TE RAW RESPONSE] status=%s body=%s", resp.status_code, resp.text[:500])
+        resp.raise_for_status()
         raw = resp.json()
         if not isinstance(raw, list):
-            logger.warning("TradingEconomics response is not a list; type=%s", type(raw))
             raw = []
 
         normalized: List[Dict] = []
