@@ -46,21 +46,23 @@ class EventService:
 
     def get_events_for_date(self, target: date) -> List[Dict]:
         window_days = 30
+        te_attempted = False
+        events: List[Dict] = []
 
         # 1) API優先
         if self._te is not None:
+            te_attempted = True
             try:
                 events = self._te.fetch_events(target)
             except Exception:
                 logger.warning("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
-                events = []
         else:
             logger.warning("TradingEconomics provider unavailable; falling back to heuristic calendar")
-            events = []
 
         # 2) APIが取れなければフォールバック
         if not events:
-            logger.warning("TradingEconomics returned no events; using heuristic calendar")
+            if te_attempted:
+                logger.warning("TE returned 0 events -> fallback to heuristic")
             events = self._monthly_events_fallback(target)
 
         # 3) 既存のwindow絞り込み（今の挙動を維持）
