@@ -1,10 +1,15 @@
+import logging
+from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
-import logging
 from enum import Enum
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 from scoring.technical import calculate_technical_score
 from scoring.macro import calculate_macro_score
@@ -134,6 +139,11 @@ _cached_at: dict[str, datetime] = {}
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/debug/te")
+def debug_te():
+    return event_service.get_te_debug_info()
 
 
 @app.get("/api/nav/sp500-synthetic", response_model=SyntheticNavResponse)
