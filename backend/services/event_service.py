@@ -46,21 +46,25 @@ class EventService:
 
     def get_events_for_date(self, target: date) -> List[Dict]:
         window_days = 30
+        te_attempted = False
+        events: List[Dict] = []
 
         # 1) API優先
         if self._te is not None:
+            # TEはオプション。無料枠では403が通常運転なので、空配列を受け入れて
+            # も必ずヒューリスティックに落とす。
+            te_attempted = True
             try:
                 events = self._te.fetch_events(target)
             except Exception:
-                logger.warning("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
-                events = []
+                logger.info("TradingEconomics fetch failed; falling back to heuristic calendar", exc_info=True)
         else:
-            logger.warning("TradingEconomics provider unavailable; falling back to heuristic calendar")
-            events = []
+            logger.info("TradingEconomics provider unavailable; falling back to heuristic calendar")
 
         # 2) APIが取れなければフォールバック
         if not events:
-            logger.warning("TradingEconomics returned no events; using heuristic calendar")
+            if te_attempted:
+                logger.info("TE returned 0 events -> fallback to heuristic")
             events = self._monthly_events_fallback(target)
 
         # 3) 既存のwindow絞り込み（今の挙動を維持）
@@ -74,3 +78,13 @@ class EventService:
 
     def get_events(self) -> List[Dict]:
         return self.get_events_for_date(date.today())
+
+    def get_te_debug_info(self) -> Dict:
+        if self._te is None:
+            return {"enabled": False}
+        return {
+            "enabled": True,
+            "countries": self._te.countries,
+            "importance": self._te.importance,
+            "windowDays": self._te.window_days,
+        }
