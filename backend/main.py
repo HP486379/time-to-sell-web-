@@ -17,9 +17,10 @@ from scoring.events import calculate_event_adjustment
 from scoring.total_score import calculate_total_score, get_label
 from services.sp500_market_service import SP500MarketService
 from services.macro_data_service import MacroDataService
-from services.event_service import EventService
+from services.event_service import EventService, ManualCalendarProvider
 from services.nav_service import FundNavService
 from services.backtest_service import BacktestService
+from services.tradingeconomics_calendar import TradingEconomicsCalendarProvider
 
 
 class IndexType(str, Enum):
@@ -123,7 +124,17 @@ app.add_middleware(
 
 market_service = SP500MarketService()
 macro_service = MacroDataService()
-event_service = EventService()
+
+manual_events_path = Path(__file__).parent / "data" / "us_events.json"
+manual_events = ManualCalendarProvider(manual_events_path).load_events()
+
+te_provider = None
+try:
+    te_provider = TradingEconomicsCalendarProvider.from_env()
+except Exception:
+    te_provider = None
+
+event_service = EventService(manual_events=manual_events, te_provider=te_provider)
 nav_service = FundNavService()
 backtest_service = BacktestService(market_service, macro_service, event_service)
 
