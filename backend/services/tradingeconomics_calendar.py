@@ -56,6 +56,11 @@ class TradingEconomicsCalendarProvider:
         return cls(api_key=api_key, countries=countries, importance=importance, window_days=window_days)
 
     def fetch_events(self, today: date) -> List[Dict]:
+        """
+        TradingEconomics is optional/free-tier: 403やネットワーク失敗は想定内。
+        失敗時は例外を投げず空配列で返し、呼び出し元がヒューリスティックに
+        確実にフォールバックできるようにする。
+        """
         # Simple in-memory cache (per process)
         now = time.time()
         if self._cache_events is not None and now < self._cache_until:
@@ -74,28 +79,33 @@ class TradingEconomicsCalendarProvider:
         # importance= (1-Low, 2-Medium, 3-High)
         params["importance"] = str(self.importance)
 
-        logger.info(
-            "Calling TradingEconomics calendar: countries=%s start=%s end=%s importance=%s",
-            self.countries,
-            start,
-            end,
-            params["importance"],
-        )
         try:
             resp = requests.get(url, params=params, timeout=self.timeout_sec)
-            resp.raise_for_status()
-        except requests.HTTPError as exc:
-            status = getattr(exc.response, "status_code", "unknown")
-            body = getattr(exc.response, "text", "")
-            logger.error("TradingEconomics API HTTP error: status=%s body=%s", status, body, exc_info=True)
-            raise
         except Exception as exc:
-            logger.error("TradingEconomics API request failed", exc_info=True)
-            raise
-        logger.info("TradingEconomics raw response (truncated): %s", resp.text[:500])
-        raw = resp.json()
+            status = getattr(getattr(exc, "response", None), "status_code", "request_failed")
+            body = getattr(getattr(exc, "response", None), "text", "")
+            log = logger.info if status == 403 else logger.warning
+            log("[TE RAW RESPONSE] status=%s body=%s", status, (body or "")[:500])
+            return []
+
+        log_level = logger.info if resp.status_code == 403 else logger.warning
+        log_level("[TE RAW RESPONSE] status=%s body=%s", resp.status_code, resp.text[:500])
+        if resp.status_code == 403:
+            # 無料枠では頻出する想定内の応答。空配列でフォールバックさせる。
+            return []
+
+        try:
+            resp.raise_for_status()
+        except Exception:
+            # TE失敗は想定内。フォールバックを優先する。
+            return []
+
+        try:
+            raw = resp.json()
+        except Exception:
+            return []
+
         if not isinstance(raw, list):
-            logger.warning("TradingEconomics response is not a list; type=%s", type(raw))
             raw = []
 
         normalized: List[Dict] = []

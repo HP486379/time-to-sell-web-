@@ -1,10 +1,15 @@
+import logging
+from pathlib import Path
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
-import logging
 from enum import Enum
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 from scoring.technical import calculate_technical_score
 from scoring.macro import calculate_macro_score
@@ -12,9 +17,10 @@ from scoring.events import calculate_event_adjustment
 from scoring.total_score import calculate_total_score, get_label
 from services.sp500_market_service import SP500MarketService
 from services.macro_data_service import MacroDataService
-from services.event_service import EventService
+from services.event_service import EventService, ManualUSCalendarProvider
 from services.nav_service import FundNavService
 from services.backtest_service import BacktestService
+from services.tradingeconomics_calendar import TradingEconomicsCalendarProvider
 
 
 class IndexType(str, Enum):
@@ -50,7 +56,16 @@ class EvaluateResponse(BaseModel):
     technical_details: dict = Field(default_factory=dict)
     macro_details: dict = Field(default_factory=dict)
     event_details: dict = Field(default_factory=dict)
+    eventTrace: List[dict] = Field(default_factory=list)
     price_series: List[PricePoint] = Field(default_factory=list)
+
+
+class EvaluateSimpleResponse(BaseModel):
+    totalScore: float
+    technical: float
+    macro: float
+    event: float
+    eventTrace: List[dict]
 
 
 class SyntheticNavResponse(BaseModel):
@@ -116,7 +131,22 @@ app.add_middleware(
 
 market_service = SP500MarketService()
 macro_service = MacroDataService()
-event_service = EventService()
+
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+
+us_manual_provider = ManualUSCalendarProvider.from_json_file(
+    DATA_DIR / "us_events.json"
+)
+
+# TradingEconomics は無料枠前提なので、現状は明示的に無効化
+# te_provider = TradingEconomicsCalendarProvider.from_env()
+te_provider = None
+
+event_service = EventService(
+    us_manual=us_manual_provider,
+    te=te_provider,
+)
 nav_service = FundNavService()
 backtest_service = BacktestService(market_service, macro_service, event_service)
 
@@ -134,6 +164,11 @@ _cached_at: dict[str, datetime] = {}
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/debug/te")
+def debug_te():
+    return event_service.get_te_debug_info()
 
 
 @app.get("/api/nav/sp500-synthetic", response_model=SyntheticNavResponse)
@@ -155,15 +190,35 @@ def get_fund_nav():
 
 
 def _build_snapshot(index_type: IndexType = IndexType.SP500):
+    today = date.today()
     events: List[dict] = []
+    event_trace: List[dict] = []
     try:
-        events = event_service.get_events()
+        event_objects = event_service.fetch_events(today)
+        events = [
+            {
+                "name": e.name,
+                "date": e.date,
+                "importance": e.importance,
+                "source": e.source,
+            }
+            for e in event_objects
+        ]
+        event_trace = [
+            {
+                "name": e.name,
+                "date": e.date.isoformat(),
+                "importance": e.importance,
+                "source": e.source,
+            }
+            for e in event_objects
+        ]
     except Exception:
         logger.error("Failed to fetch events; falling back to empty list", exc_info=True)
-        events = []
+        events, event_trace = [], []
 
     try:
-        event_adjustment, event_details_raw = calculate_event_adjustment(date.today(), events)
+        event_adjustment, event_details_raw = calculate_event_adjustment(today, events)
     except Exception:
         logger.error("Failed to calculate event adjustment; using zero adjustment", exc_info=True)
         event_adjustment, event_details_raw = 0.0, {}
@@ -192,6 +247,7 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
             }
             for e in events
         ],
+        "event_trace": event_trace,
     }
 
     price_history: List = []
@@ -257,6 +313,7 @@ def _build_snapshot(index_type: IndexType = IndexType.SP500):
         "technical_details": technical_details,
         "macro_details": macro_details,
         "event_details": event_details,
+        "event_trace": event_trace,
         "price_history": price_history,
         "price_series": price_series,
     }
@@ -355,6 +412,7 @@ def _evaluate(position: PositionRequest):
         "technical_details": technical_details,
         "macro_details": snapshot.get("macro_details", {}),
         "event_details": snapshot.get("event_details", {}),
+        "eventTrace": snapshot.get("event_trace", []),
         "price_series": snapshot.get("price_series", []),
     }
 
@@ -364,9 +422,37 @@ def evaluate_sp500(position: PositionRequest):
     return _evaluate(position)
 
 
-@app.post("/api/evaluate", response_model=EvaluateResponse)
+@app.post("/api/evaluate", response_model=EvaluateSimpleResponse)
 def evaluate(position: PositionRequest):
-    return _evaluate(position)
+    today = date.today()
+    events = event_service.fetch_events(today)
+    event_trace = [
+        {
+            "name": e.name,
+            "date": e.date.isoformat(),
+            "importance": e.importance,
+            "source": e.source,
+        }
+        for e in events
+    ]
+
+    base = _evaluate(position)
+    scores = base.get("scores", {})
+    score_t = scores.get("technical", 0.0)
+    score_m = scores.get("macro", 0.0)
+    score_e, _ = calculate_event_adjustment(
+        today,
+        [e.to_dict() for e in events],
+    )
+    total_score = calculate_total_score(score_t, score_m, score_e)
+
+    return {
+        "totalScore": total_score,
+        "technical": score_t,
+        "macro": score_m,
+        "event": score_e,
+        "eventTrace": event_trace,
+    }
 
 
 @app.post("/api/backtest", response_model=BacktestResponse)
