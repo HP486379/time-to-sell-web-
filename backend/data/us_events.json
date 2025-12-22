@@ -5,18 +5,13 @@
     "importance": 5
   },
   {
-    "name": "FOMC",
-    "date": "2025-03-19",
-    "importance": 5
-  },
-  {
     "name": "Nonfarm Payrolls",
-    "date": "2025-01-10",
+    "date": "2025-02-07",
     "importance": 3
   },
   {
     "name": "CPI Release",
-    "date": "2025-01-14",
+    "date": "2025-02-14",
     "importance": 4
   }
 ]
